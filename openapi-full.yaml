@@ -1,0 +1,2094 @@
+openapi: 3.0.3
+info:
+  title: Nook API
+  description: Fashion items and brand API
+  version: 1.0.0
+
+servers:
+  - url: https://kl4hylidcs3k4fazx4aojk2wpe0fbksa.lambda-url.ap-northeast-1.on.aws
+    description: AWS Lambda Function URL
+
+paths:
+  /:
+    get:
+      summary: ヘルスチェック
+      tags:
+        - System
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Hi, developers! I'm awake!"
+
+  # Items endpoints
+  /items/random:
+    get:
+      summary: ランダムアイテム取得
+      tags:
+        - Items
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: 取得件数
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/sales_status'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: ランダムアイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/get/{item_id}:
+    get:
+      summary: 商品詳細を取得（互換性のため維持）
+      description: 指定されたIDのアイテム詳細を取得
+      deprecated: true
+      tags:
+        - Items
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: アイテムID
+      responses:
+        '200':
+          description: 商品詳細
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '404':
+          description: 商品が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/by-id/{id}:
+    get:
+      summary: 内部IDで商品詳細を取得
+      description: 内部ID（UUID）でアイテム詳細を取得
+      tags:
+        - Items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 内部ID（UUID形式）
+          example: "9dcc900c-ef5d-5a47-81b8-4f1db5d7c918"
+      responses:
+        '200':
+          description: 商品詳細
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '404':
+          description: 商品が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/by-item-id/{item_id}:
+    get:
+      summary: アイテムIDで商品詳細を取得
+      description: アイテムID（例：Mercariのm44984451077）でアイテム詳細を取得
+      tags:
+        - Items
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: アイテムID（プラットフォーム固有のID）
+          example: "m44984451077"
+      responses:
+        '200':
+          description: 商品詳細
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '404':
+          description: 商品が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/other-categories:
+    get:
+      summary: 指定されたカテゴリ以外のアイテムを取得
+      description: tops, bottoms, onepiece, outer, shoes, bag以外のカテゴリのアイテムを取得
+      tags:
+        - Items
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/sales_status'
+      responses:
+        '200':
+          description: その他カテゴリのアイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/other-categories/stats:
+    get:
+      summary: その他カテゴリのアイテム統計情報を取得
+      description: tops, bottoms, onepiece, outer, shoes, bag以外のカテゴリのアイテムの統計情報
+      tags:
+        - Items
+      responses:
+        '200':
+          description: その他カテゴリのアイテム統計情報
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  initial_excluded_categories:
+                    type: array
+                    items:
+                      type: string
+                    description: 初期の除外カテゴリリスト
+                  discovered_other_categories:
+                    type: array
+                    items:
+                      type: string
+                    description: 発見された他のカテゴリリスト
+                  all_categories:
+                    type: array
+                    items:
+                      type: string
+                    description: 全カテゴリのリスト
+                  total_categories:
+                    type: integer
+                    description: カテゴリの総数
+                  total_other_categories:
+                    type: integer
+                    description: その他カテゴリの総数
+                  category_counts:
+                    type: object
+                    description: カテゴリ別の件数
+                    additionalProperties:
+                      type: integer
+                  iterations:
+                    type: integer
+                    description: 反復回数
+                  sampled_items:
+                    type: integer
+                    description: サンプリングされたアイテム数
+
+  /items/other-categories/platform-stats:
+    get:
+      summary: カテゴリ別プラットフォーム統計を取得
+      tags:
+        - Items
+      responses:
+        '200':
+          description: プラットフォーム統計
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  excluded_category_stats:
+                    type: object
+                  other_category_stats:
+                    type: object
+                  category_totals:
+                    type: object
+                  total_categories:
+                    type: integer
+
+  /items/by-updated-date:
+    get:
+      summary: 指定日の未売り切れ商品を取得（updated_at基準）
+      description: 指定した日付のUTC日付範囲で、updated_atが当日に該当し、かつ未売り切れ（is_sold=false）の商品を返します。
+      tags:
+        - Items
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: 取得対象日 (UTC, YYYY-MM-DD)
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/scroll_id'
+        - $ref: '#/components/parameters/platforms'
+      responses:
+        '200':
+          description: 指定日の商品一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    description: リクエストされた日付 (YYYY-MM-DD)
+                  total_count:
+                    type: integer
+                    description: 条件に一致するアイテムの総数
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Item'
+                  has_more:
+                    type: boolean
+                    description: 続きが存在するかどうか
+                  next_scroll_id:
+                    type: string
+                    nullable: true
+                    description: 次ページ取得用のカーソル
+        '400':
+          description: パラメータエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/similar-to/item/{id}:
+    get:
+      summary: 指定アイテムに類似するアイテムを取得
+      description: 内部ID（UUID形式）を指定して類似アイテムを取得
+      tags:
+        - Items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 内部ID（UUID形式）
+          example: "f89492b3-212d-5185-a42b-a1ff0f411a72"
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: 類似アイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/similar-to/by-item-id/{item_id}:
+    get:
+      summary: プラットフォーム固有のitem_idで類似アイテムを取得
+      description: プラットフォーム固有のitem_id（例：Mercariのm44984451077）を指定して類似アイテムを取得
+      tags:
+        - Items
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: プラットフォーム固有のアイテムID（例：m44984451077）
+          example: "m44984451077"
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: 類似アイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '404':
+          description: 指定されたitem_idのアイテムが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/similar-to/style/{style_id}:
+    get:
+      summary: 指定スタイルに類似するアイテムを取得
+      tags:
+        - Items
+      parameters:
+        - name: style_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: 類似アイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/similar-to/custom-text/{text}:
+    get:
+      summary: カスタムテキストに類似するアイテムを取得
+      tags:
+        - Items
+      parameters:
+        - name: text
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: 類似アイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/similar-to/multiple-styles:
+    get:
+      summary: 複数スタイルに類似するアイテムを取得
+      tags:
+        - Items
+      parameters:
+        - name: styleIds
+          in: query
+          required: true
+          schema:
+            type: string
+          description: スタイルIDのカンマ区切りリスト
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: 類似アイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/recommend:
+    get:
+      summary: ポジティブIDベースのレコメンド
+      tags:
+        - Items
+      parameters:
+        - name: positives
+          in: query
+          schema:
+            type: string
+          description: ポジティブIDのカンマ区切りリスト
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: レコメンドアイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/discover-by/display/{display_id}:
+    get:
+      summary: コンテキストベースの発見
+      tags:
+        - Items
+      parameters:
+        - name: display_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: positives
+          in: query
+          schema:
+            type: string
+          description: ポジティブIDのカンマ区切りリスト
+        - name: negatives
+          in: query
+          schema:
+            type: string
+          description: ネガティブIDのカンマ区切りリスト
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: 発見されたアイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/recommend-mixed:
+    post:
+      summary: ミックスレコメンデーション
+      tags:
+        - Items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                positiveIds:
+                  type: array
+                  items:
+                    type: string
+                positiveTexts:
+                  type: array
+                  items:
+                    type: string
+                negativeIds:
+                  type: array
+                  items:
+                    type: string
+                negativeTexts:
+                  type: array
+                  items:
+                    type: string
+                limit:
+                  type: integer
+                  default: 20
+                strategy:
+                  type: string
+                  enum: ["best_score", "average_vector"]
+                  default: "best_score"
+      responses:
+        '200':
+          description: レコメンドアイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/similar-to/custom-text/with-query-filter/{text}:
+    get:
+      summary: クエリフィルター付きテキスト検索
+      tags:
+        - Items
+      parameters:
+        - name: text
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: brand_name
+          in: query
+          schema:
+            type: string
+        - name: brand_id
+          in: query
+          schema:
+            type: string
+        - name: weight
+          in: query
+          schema:
+            type: number
+            default: 0.05
+          description: ブランド類似度の重み（既定0.05）
+        - name: similar_brand_threshold
+          in: query
+          schema:
+            type: integer
+            default: 30
+          description: 類似ブランド取得数（既定30）
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: フィルタリングされたアイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+
+  /items/by-brand:
+    get:
+      summary: ブランドでアイテム検索
+      tags:
+        - Items
+      parameters:
+        - name: brand_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ブランドID
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: ブランド検索結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Item'
+                    description: 検索されたアイテムリスト
+                  total_count:
+                    type: integer
+                    description: 条件に一致するアイテムの総数
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/similar-to/custom-text/filtered-by-brand/{text}:
+    get:
+      summary: ブランドフィルター付きカスタムテキスト検索
+      tags:
+        - Items
+      parameters:
+        - name: text
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: brand_name
+          in: query
+          schema:
+            type: string
+        - name: brand_id
+          in: query
+          schema:
+            type: string
+        - name: similar_brand_threshold
+          in: query
+          schema:
+            type: integer
+            default: 30
+          description: 類似ブランド取得数（既定30）
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: 類似アイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/similar-to/custom-text/with-brand-reranking/{text}:
+    get:
+      summary: ブランドリランキング付きカスタムテキスト検索
+      tags:
+        - Items
+      parameters:
+        - name: text
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: brand_name
+          in: query
+          schema:
+            type: string
+        - name: brand_id
+          in: query
+          schema:
+            type: string
+        - name: weight
+          in: query
+          schema:
+            type: number
+            default: 0.05
+        - name: similar_brand_threshold
+          in: query
+          schema:
+            type: integer
+            default: 30
+          description: 類似ブランド取得数（既定30）
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: 類似アイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/similar-to/custom-text/with-price-sorting/{text}:
+    get:
+      summary: 価格ソート付きカスタムテキスト検索
+      tags:
+        - Items
+      parameters:
+        - name: text
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: brand_name
+          in: query
+          schema:
+            type: string
+        - name: brand_id
+          in: query
+          schema:
+            type: string
+        - name: weight
+          in: query
+          schema:
+            type: number
+            default: 0.05
+          description: ブランド類似度の重み（既定0.05）
+        - name: similar_brand_threshold
+          in: query
+          schema:
+            type: integer
+            default: 30
+          description: 類似ブランド取得数（既定30）
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: 類似アイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/similar-to/custom-text/with-style-and-brand-reranking/{text}:
+    get:
+      summary: スタイルとブランドでリランキングする類似検索
+      description: テキストに基づいて商品を検索し、スタイルとブランドの両方でリランキングします。
+      tags:
+        - Items
+      parameters:
+        - name: text
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 検索テキスト
+        - name: brand_name
+          in: query
+          schema:
+            type: string
+          description: ブランド名（brand_idと併用可）
+        - name: brand_id
+          in: query
+          schema:
+            type: string
+          description: ブランドID（brand_nameと併用可）
+        - name: weight
+          in: query
+          schema:
+            type: number
+            default: 0.05
+          description: ブランド類似度の重み
+        - name: similar_brand_threshold
+          in: query
+          schema:
+            type: integer
+          description: 類似ブランドの閾値
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: リランキングされたアイテムリスト
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '400':
+          description: brand_idまたはbrand_nameが必須
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/similar-to/image:
+    post:
+      summary: 画像ベース類似アイテム検索
+      tags:
+        - Items
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image_base64:
+                  type: string
+                  description: Base64エンコードした画像
+      responses:
+        '200':
+          description: 類似アイテム
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /items/search/image-and-text:
+    post:
+      summary: 画像とテキストでリランキング検索
+      description: 画像とテキストの両方を使ってリランキング検索を行います。
+      tags:
+        - Items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image_base64:
+                  type: string
+                  format: byte
+                text:
+                  type: string
+              required:
+                - text
+      parameters:
+        - name: primary_search
+          in: query
+          schema:
+            type: string
+            enum: [image, text]
+            default: image
+        - name: rerank_weight
+          in: query
+          schema:
+            type: number
+            default: 0.4
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/genders'
+        - $ref: '#/components/parameters/sizes'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/brand_tiers'
+        - $ref: '#/components/parameters/min_price'
+        - $ref: '#/components/parameters/max_price'
+        - $ref: '#/components/parameters/platforms'
+        - $ref: '#/components/parameters/new'
+      responses:
+        '200':
+          description: 検索結果
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '400':
+          description: パラメータエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Styles endpoints
+  /styles/similar-to/display/{display_id}:
+    get:
+      summary: ディスプレイ画像に類似するスタイル
+      tags:
+        - Styles
+      parameters:
+        - name: display_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: 類似スタイル
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Style'
+        '404':
+          description: 指定されたdisplay_idが見つからない、または類似するスタイルが存在しません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /styles/similar-to/style/{style_id}:
+    get:
+      summary: スタイルに類似するスタイル
+      tags:
+        - Styles
+      parameters:
+        - name: style_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: 類似スタイル
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Style'
+
+  /styles/similar-to/item/{item_id}:
+    get:
+      summary: アイテムに類似するスタイル
+      tags:
+        - Styles
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: 類似スタイル
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Style'
+        '404':
+          description: 指定されたitem_idのアイテムが見つからない、または類似するスタイルが存在しません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /styles/similar-to/custom-text/{text}:
+    get:
+      summary: カスタムテキストに類似するスタイル
+      tags:
+        - Styles
+      parameters:
+        - name: text
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: 類似スタイル
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Style'
+
+  # Keywords endpoints
+  /keywords/generate/search:
+    get:
+      summary: ファッションキーワード生成（ユーザ無し）
+      tags:
+        - Keywords
+      parameters:
+        - name: boardIds
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ボードIDのカンマ区切り
+        - name: keyword
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 生成されたキーワード
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      summary: 嗜好とキーワードに基づくキーワード拡張
+      tags:
+        - Keywords
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 基本キーワード
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userPreferences:
+                  type: object
+                  description: ユーザーの嗜好情報
+                image_base64:
+                  type: string
+                  format: byte
+                  description: Base64エンコードされた画像データ（オプション）
+                image_url:
+                  type: string
+                  format: uri
+                  description: 画像URL（オプション）
+              required:
+                - userPreferences
+      responses:
+        '200':
+          description: 拡張されたキーワードリスト
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /keywords/generate/suggestions:
+    get:
+      summary: スタイル画像からファッションキーワード生成
+      tags:
+        - Keywords
+      parameters:
+        - name: boardIds
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 生成されたキーワード
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # Brands endpoints
+  /brands/get-detail/{brand_id}:
+    get:
+      summary: ブランド詳細を取得
+      tags:
+        - Brands
+      parameters:
+        - name: brand_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ブランド詳細
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandDetail'
+        '404':
+          description: ブランドが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /brands/similar-to:
+    get:
+      summary: 類似ブランド検索
+      tags:
+        - Brands
+      parameters:
+        - name: brand_name
+          in: query
+          schema:
+            type: string
+        - name: brand_id
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: 類似ブランド
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /brands/detect/{text}:
+    get:
+      summary: テキストからブランドを検出
+      description: 与えられたテキストから関連するブランドを検出し、類似度の高い順に返します。
+      tags:
+        - Brands
+      parameters:
+        - name: text
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ブランドを検出するためのテキスト。
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: 返されるブランドの最大数。
+      responses:
+        '200':
+          description: 検出されたブランドのリスト
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    type: string
+                  brands:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        similarity:
+                          type: number
+                          description: 類似度スコア
+                          example: 0.95
+                        brand:
+                          type: string
+                          description: ブランド名
+                          example: "NIKE"
+                        id:
+                          type: string
+                          description: ブランドID
+                          example: "9602"
+                  count:
+                    type: integer
+        '400':
+          description: パラメータエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /brands/tags:
+    post:
+      summary: 複数ブランドのタグ情報取得
+      description: 複数のブランドIDに基づいて、それらのブランドのタグ情報を取得します。
+      tags:
+        - Brands
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+              description: ブランドIDのリスト
+      responses:
+        '200':
+          description: ブランドタグ情報
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /brands:
+    post:
+      summary: 複数ブランドの詳細取得
+      description: 複数のブランドIDに基づいて、ブランド詳細を一括で取得します。
+      tags:
+        - Brands
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                brand_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: ブランドIDのリスト
+              required:
+                - brand_ids
+      responses:
+        '200':
+          description: ブランド詳細リスト
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  brands:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Brand'
+                  count:
+                    type: integer
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Preference endpoints
+  /preference/update:
+    post:
+      summary: 嗜好更新
+      tags:
+        - Preference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userPreferences:
+                  type: object
+                userActivities:
+                  type: object
+                sessionContext:
+                  type: object
+      responses:
+        '200':
+          description: 更新結果
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /preference/first-time:
+    post:
+      summary: 初回嗜好生成（グラウンディングなし）
+      tags:
+        - Preference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                preferences:
+                  type: object
+                  properties:
+                    baseInfo:
+                      type: object
+                      properties:
+                        gender:
+                          type: string
+                    imageUrls:
+                      type: array
+                      items:
+                        type: string
+                grounding:
+                  type: boolean
+                  description: "Google Search グラウンディングを有効にするか（デフォルト: false）"
+                  default: false
+                extraPrompt:
+                  type: string
+                  description: Gemini への追加プロンプト
+              required:
+                - preferences
+      responses:
+        '200':
+          description: 生成された嗜好
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  grounding:
+                    type: boolean
+                  extraPromptIncluded:
+                    type: boolean
+                  axes:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /preference/recommend:
+    post:
+      summary: 嗜好ベースレコメンド
+      tags:
+        - Preference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userPreferences:
+                  type: object
+                sessionCount:
+                  type: integer
+                currentTime:
+                  type: string
+      responses:
+        '200':
+          description: レコメンド結果
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Home feed endpoint
+  /items:
+    post:
+      summary: 複数IDで商品詳細を取得
+      description: 複数のitem_idに基づいて、商品詳細を一括で取得します（最大100件）。
+      tags:
+        - Items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                item_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: 取得したい商品のitem_idリスト。
+                  example: ["m123456789", "m987654321"]
+      responses:
+        '200':
+          description: 商品詳細のリスト
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Item'
+                  count:
+                    type: integer
+                    description: 取得できたアイテムの数
+        '400':
+          description: 不正なリクエスト（item_idsがない、100件を超えるなど）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /home-feed:
+    post:
+      summary: ホームフィード生成
+      tags:
+        - Feed
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userPreferences:
+                  type: object
+                userActivities:
+                  type: object
+                sessionContext:
+                  type: object
+      responses:
+        '200':
+          description: ホームフィード
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  search_keywords:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        preference_axis:
+                          type: string
+                          description: 嗜好軸
+                          example: "素材感とシルエットを重視したミニマルモード"
+                        item_expression:
+                          type: string
+                          description: アイテムの表現
+                          example: "異素材を組み合わせた、アシンメトリーな裾のミディ丈プリーツスカート"
+                        brand:
+                          type: string
+                          description: ブランド名
+                          example: "sacai"
+                    description: 検索キーワードリスト
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /homefeed/short-term:
+    post:
+      summary: 短期ホームフィード推薦生成
+      description: 最近のユーザー活動に基づいて短期的な推薦を生成します。
+      tags:
+        - Feed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userPreferences:
+                  type: object
+                  description: ユーザーの嗜好情報
+                userActivities:
+                  type: object
+                  description: ユーザーの活動履歴
+                sessionContext:
+                  type: object
+                  description: セッションコンテキスト
+                grounding:
+                  type: boolean
+                  default: false
+                  description: Google Search グラウンディングの有無
+              required:
+                - userPreferences
+                - userActivities
+                - sessionContext
+      responses:
+        '200':
+          description: 短期推薦結果
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /homefeed/adjust:
+    post:
+      summary: ホームフィード推薦調整
+      description: 既存の推薦ワードをユーザー活動に基づいて調整します。
+      tags:
+        - Feed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userPreferences:
+                  type: object
+                  description: ユーザーの嗜好情報（searchKeywordsを含む）
+                userActivities:
+                  type: object
+                  description: ユーザーの活動履歴
+                sessionContext:
+                  type: object
+                  description: セッションコンテキスト
+                grounding:
+                  type: boolean
+                  default: false
+                  description: Google Search グラウンディングの有無
+              required:
+                - userPreferences
+                - userActivities
+                - sessionContext
+      responses:
+        '200':
+          description: 調整された推薦結果
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: 入力検証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  parameters:
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+      description: 取得件数制限
+
+    offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+      description: 取得開始位置
+
+    scroll_id:
+      name: scroll_id
+      in: query
+      schema:
+        type: string
+        nullable: true
+      description: 継続取得用カーソル（先頭取得時は未指定）
+
+    genders:
+      name: genders
+      in: query
+      schema:
+        type: string
+      description: 性別フィルタ（カンマ区切り可）
+
+    sizes:
+      name: sizes
+      in: query
+      schema:
+        type: string
+      description: サイズフィルタ（カンマ区切り可）
+
+    categories:
+      name: categories
+      in: query
+      schema:
+        type: string
+      description: カテゴリフィルタ（カンマ区切り可、例：tops,bottoms,shoes）
+
+    brand_id:
+      name: brand_id
+      in: query
+      schema:
+        type: string
+      description: ブランドIDフィルタ
+
+    brand_tiers:
+      name: brand_tiers
+      in: query
+      schema:
+        type: string
+      description: ブランド階層フィルタ（カンマ区切り可）
+
+    min_price:
+      name: min_price
+      in: query
+      schema:
+        type: integer
+      description: 最小価格
+
+    max_price:
+      name: max_price
+      in: query
+      schema:
+        type: integer
+      description: 最大価格
+
+    platforms:
+      name: platforms
+      in: query
+      schema:
+        type: string
+      description: プラットフォームフィルタ（カンマ区切り可、例：mercari,secondstreet）
+
+    sales_status:
+      name: sales_status
+      in: query
+      schema:
+        type: string
+        enum: [for_sale, sold_out, all]
+        default: for_sale
+      description: 商品の販売状態フィルタ (for_sale=販売中のみ, sold_out=売り切れのみ, all=両方)
+
+    new:
+      name: new
+      in: query
+      schema:
+        type: boolean
+        default: false
+      description: 新着商品フィルタ (true=24時間以内の商品のみ, false=全商品)
+
+  schemas:
+    Item:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 内部ID（UUID形式）
+          example: "f89492b3-212d-5185-a42b-a1ff0f411a72"
+        item_id:
+          type: string
+          description: プラットフォーム固有のアイテムID
+          example: "2342442064430"
+        price:
+          type: number
+          description: 価格
+          example: 11990.0
+        brand_id:
+          type: string
+          description: ブランドID
+          example: "41396"
+        brand_name:
+          type: string
+          description: ブランド名
+          example: "ALPHA INDUSTRIES"
+        brand_tier:
+          type: string
+          description: ブランド階層
+          example: "middle-high"
+        category:
+          type: string
+          description: カテゴリ
+          example: "outer"
+        platform:
+          type: string
+          description: プラットフォーム
+          enum: ["mercari", "secondstreet"]
+          example: "secondstreet"
+        platform_url:
+          type: string
+          description: プラットフォーム上の商品URL
+          example: "https://www.2ndstreet.jp/goods/detail/goodsId/2342442064430"
+        image_url:
+          type: string
+          description: |
+            商品画像URL
+            
+            **WebP形式のアクセス方法:**
+            WebP形式の画像には以下のパターンでアクセス可能:
+            `https://dgmucxjv6f9uz.cloudfront.net/x320/items/{item_id}_{image_number}.webp`
+            
+            - `{image_number}`: 1から`image_count`まで（最小値: 1、最大値: image_countの値）
+            
+            例: `https://dgmucxjv6f9uz.cloudfront.net/x320/items/m41028660137_1.webp`
+
+            **標準画像URL（CDN）のアクセス方法:**
+            jpg形式の画像には以下のパターンでアクセス可能:
+            `https://dgmucxjv6f9uz.cloudfront.net/unoptimized/items/{item_id}_{image_number}.jpg`
+            
+            - `{image_number}`: 1から`image_count`まで（最小値: 1、最大値: image_countの値）
+            
+            例: `https://dgmucxjv6f9uz.cloudfront.net/unoptimized/items/m41028660137_1.jpg`
+          example: "https://relist-scraper.s3.ap-northeast-1.amazonaws.com/secondstreet/20250527/images/flat/2342442064430_1.jpg"
+        display_url:
+          type: string
+          description: 表示用画像URL（image_urlと同じ値）
+          example: "https://relist-scraper.s3.ap-northeast-1.amazonaws.com/secondstreet/20250527/images/flat/2342442064430_1.jpg"
+        title:
+          type: string
+          description: 商品タイトル
+          nullable: true
+          example: "Ability Club アビリティクラブ ジャケット 黒　M"
+        description:
+          type: string
+          description: 商品説明
+          nullable: true
+          example: "商品説明 ご覧いただきありがとうございます☆ ..."
+        gender:
+          type: string
+          description: 性別
+          enum: ["mens", "womens", "unisex"]
+          example: "mens"
+        size:
+          type: string
+          description: サイズ
+          example: "S"
+          nullable: true
+        is_sold:
+          type: boolean
+          description: 売却済みフラグ
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: 作成日時
+          example: "2025-05-28T04:29:19.449305"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新日時
+          example: "2025-05-28T07:30:00.000000+00:00"
+        image_count:
+          type: integer
+          description: 商品画像の枚数
+          example: 7
+          nullable: true
+
+    Style:
+      type: object
+      properties:
+        style_id:
+          type: string
+          description: スタイルID（UUID形式）
+          example: "b23ba360-03a4-fa82-b5b6-16b040e307df"
+        style_url:
+          type: string
+          description: スタイル画像URL
+          example: "https://relist-app.s3.ap-northeast-1.amazonaws.com/boards/images/b23ba36003a4fa82b5b616b040e307df.jpg"
+
+    Brand:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ブランドID
+          example: 9602
+        name:
+          type: string
+          description: ブランド名
+          example: "VINVERT"
+        item_count:
+          type: integer
+          description: アイテム数
+          example: 176
+        score:
+          type: number
+          description: 類似度スコア（類似ブランド検索時）
+          example: 0.8127953
+        official_site_url:
+          type: string
+          description: 公式サイトURL
+          nullable: true
+          example: "http://www.sanyoshokai.co.jp/brand/vinvert.html"
+        logo_image_url:
+          type: string
+          description: ロゴ画像URL
+          nullable: true
+
+    BrandDetail:
+      type: object
+      properties:
+        brand_id:
+          type: integer
+          description: ブランドID
+          example: 9602
+        name:
+          type: string
+          description: ブランド名（英語表記）
+          example: "VINVERT"
+        name_en:
+          type: string
+          description: ブランド名（英語表記）
+          example: "VINVERT"
+        name_ja:
+          type: string
+          description: ブランド名（日本語表記）
+          example: "バンベール"
+        atmosphere:
+          type: array
+          items:
+            type: string
+          description: ブランドの雰囲気
+          example: ["品があり、落ち着いた大人の女性らしいエレガントで上品な雰囲気です。"]
+        reference_sources:
+          type: array
+          items:
+            type: string
+          description: 参考情報源
+          example: ["https://www.tsushin.tv/brand/vinvert/"]
+        created_at:
+          type: string
+          format: date-time
+          description: 作成日時
+          example: "2025-05-13T12:36:23.420643+00:00"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新日時
+          example: "2025-05-13T13:13:04.898088+00:00"
+        price_range_new:
+          type: string
+          description: 新品価格帯
+          example: "調査結果からは特定の価格帯の情報は少ないですが..."
+        price_range_used:
+          type: string
+          description: 中古価格帯
+          example: "メルカリやベクトルパークなどで数百円から数千円程度"
+        description_brief:
+          type: string
+          description: 簡潔な説明
+          example: "着心地と機能性を重視した、自分らしいおしゃれを知る大人の女性に向けた高品質で上品なファッションブランドです。"
+        description_detailed:
+          type: string
+          description: 詳細な説明
+          example: "VINVERT バンベールは、1975年に誕生した日本のファッションブランドで..."
+        categories:
+          type: array
+          items:
+            type: string
+          description: カテゴリー
+          example: ["エレガンスカジュアル", "上品", "マチュア世代向け"]
+        item_count:
+          type: integer
+          description: アイテム数
+          example: 176
+        establishment_country:
+          type: string
+          description: 設立国
+          example: "jp"
+        establishment_year:
+          type: integer
+          description: 設立年
+          example: 1975
+        industry_position:
+          type: string
+          description: 業界での位置づけ
+          example: "大手アパレル企業の三陽商会が展開するブランドとして..."
+        status_quality:
+          type: string
+          description: 品質の状況
+          example: "大手アパレル企業のブランドであり、高品質を重視していると明記されている..."
+        status_tier:
+          type: string
+          description: ティアの状況
+          example: "マチュア世代向けの高価格帯ブランドとして..."
+        fashion_characteristics:
+          type: array
+          items:
+            type: string
+          description: ファッション特性
+          example: ["着心地や機能性を重視した、シンプルながらもディテールにこだわったデザインが特徴です。"]
+        representative_items:
+          type: array
+          items:
+            type: string
+          description: 代表的なアイテム
+          example: ["花柄のブラウス", "テーラードジャケット", "スカート"]
+        target_gender:
+          type: array
+          items:
+            type: string
+          description: 対象性別
+          example: ["women"]
+        instagram_url:
+          type: string
+          description: Instagram URL
+          example: ""
+        official_site_url:
+          type: string
+          description: 公式サイトURL
+          example: "http://www.sanyoshokai.co.jp/brand/vinvert.html"
+        styles_json_list:
+          type: array
+          items:
+            type: object
+            properties:
+              display_link:
+                type: string
+              updated_at:
+                type: string
+              thumbnail_link:
+                type: string
+              context_link:
+                type: string
+              image_url:
+                type: string
+              created_at:
+                type: string
+              title:
+                type: string
+              category:
+                type: string
+          description: スタイル画像リスト
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: エラーメッセージ
+          example: "指定されたアイテム ID: m44984451077 が見つかりませんでした"
+        error:
+          type: string
+          description: エラーの種類
+          example: "Server error"
+        detail:
+          type: string
+          description: エラーの詳細
