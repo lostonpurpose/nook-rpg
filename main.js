@@ -206,3 +206,9 @@ function appendLog(text, color = null) {
   }
   logDiv.scrollTop = logDiv.scrollHeight;
 }
+
+
+// need death
+// need hp bar to decrease visually
+// need sound effects
+// need exp and leveling up

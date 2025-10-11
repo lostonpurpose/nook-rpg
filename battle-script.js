@@ -1,7 +1,9 @@
 export function mapStats(item) {
   const hp = item.price;
+  // Add randomness: atk can be up to 1.5x, def up to 1.5x
   let attack = parseInt(item.size);
   if (isNaN(attack)) attack = 10;
+  attack = Math.round(attack * (1 + Math.random() * 0.5)); // 1.0x to 1.5x
 
   let defense = 5;
   switch(item.category) {
@@ -10,8 +12,8 @@ export function mapStats(item) {
     case "bottoms": defense = 10; break;
     default: defense = 5;
   }
+  defense = Math.round(defense * (1 + Math.random() * 0.5)); // 1.0x to 1.5x
 
-  // const displayName = item.title || item.brand_name || "Unknown"; removed bc item.title sometimes too long
   const displayName = item.brand_name || "Unknown";
 
   return { 
@@ -26,30 +28,45 @@ export function mapStats(item) {
   };
 }
 
-// New battleRound with hit chance logic
 export function battleRound(attacker, defender) {
-  const atk = attacker.attack;
-  const def = defender.defense;
+  // 8% chance for critical hit
+  const isCrit = Math.random() < 0.08;
+
+  // Randomize atk and def for this round (±10%)
+  const atk = Math.round(attacker.attack * (0.9 + Math.random() * 0.2)); // 0.9x to 1.1x
+  const def = Math.round(defender.defense * (0.9 + Math.random() * 0.2)); // 0.9x to 1.1x
 
   let hitChance;
   if (atk >= 2 * def) {
-    hitChance = 1.0; // Always hit
+    hitChance = 1.0;
   } else if (atk === def) {
     hitChance = 0.75;
   } else if (def >= 2 * atk) {
     hitChance = 0.25;
   } else {
-    // Linear interpolation between 0.25 and 1.0, leaning toward attacker
     hitChance = 0.75 * (atk / def) + 0.25;
     if (hitChance > 1) hitChance = 1;
     if (hitChance < 0.25) hitChance = 0.25;
   }
 
   if (Math.random() < hitChance) {
-    const damage = atk * 10;
+    // Damage: 70% to 100% of atk*20, or crit: at least 250, up to 2x atk*20
+    let baseDamage = atk * 20;
+    let damage;
+    if (isCrit) {
+      // Crit is always at least 250, up to 2x baseDamage, with some randomness
+      damage = Math.max(
+        250,
+        Math.round(baseDamage * (1.2 + Math.random() * 0.8)) // 1.2x to 2.0x
+      );
+    } else {
+      damage = Math.round(baseDamage * (0.7 + Math.random() * 0.3)); // 0.7x to 1.0x
+    }
     defender.hp -= damage;
     if (defender.hp < 0) defender.hp = 0;
-    return `${attacker.displayName} hits ${defender.displayName} for ${damage} damage!`;
+    let result = `${attacker.displayName} hits ${defender.displayName} for ${damage} damage!`;
+    if (isCrit) result += " Critical hit!";
+    return result;
   } else {
     return `${attacker.displayName} missed!`;
   }
