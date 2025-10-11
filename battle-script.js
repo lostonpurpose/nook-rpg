@@ -26,9 +26,31 @@ export function mapStats(item) {
   };
 }
 
+// New battleRound with hit chance logic
 export function battleRound(attacker, defender) {
-  const damage = Math.max(1, attacker.attack - defender.defense);
-  defender.hp -= damage;
-  if (defender.hp < 0) defender.hp = 0;
-  return `${attacker.displayName} hits ${defender.displayName} for ${damage} damage!`;
+  const atk = attacker.attack;
+  const def = defender.defense;
+
+  let hitChance;
+  if (atk >= 2 * def) {
+    hitChance = 1.0; // Always hit
+  } else if (atk === def) {
+    hitChance = 0.75;
+  } else if (def >= 2 * atk) {
+    hitChance = 0.25;
+  } else {
+    // Linear interpolation between 0.25 and 1.0, leaning toward attacker
+    hitChance = 0.75 * (atk / def) + 0.25;
+    if (hitChance > 1) hitChance = 1;
+    if (hitChance < 0.25) hitChance = 0.25;
+  }
+
+  if (Math.random() < hitChance) {
+    const damage = atk * 10;
+    defender.hp -= damage;
+    if (defender.hp < 0) defender.hp = 0;
+    return `${attacker.displayName} hits ${defender.displayName} for ${damage} damage!`;
+  } else {
+    return `${attacker.displayName} missed!`;
+  }
 }
