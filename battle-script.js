@@ -1,6 +1,5 @@
 export function mapStats(item) {
   const hp = item.price;
-  // Add randomness: atk can be up to 1.5x, def up to 1.5x
   let attack = parseInt(item.size);
   if (isNaN(attack)) attack = 10;
   attack = Math.round(attack * (1 + Math.random() * 0.5)); // 1.0x to 1.5x
@@ -24,17 +23,16 @@ export function mapStats(item) {
     defense, 
     exp: 0, 
     level: 1,
+    expToNext: 50,
+    dead: false,
     displayName,
   };
 }
 
 export function battleRound(attacker, defender) {
-  // 8% chance for critical hit
   const isCrit = Math.random() < 0.08;
-
-  // Randomize atk and def for this round (±10%)
-  const atk = Math.round(attacker.attack * (0.9 + Math.random() * 0.2)); // 0.9x to 1.1x
-  const def = Math.round(defender.defense * (0.9 + Math.random() * 0.2)); // 0.9x to 1.1x
+  const atk = Math.round(attacker.attack * (0.9 + Math.random() * 0.2));
+  const def = Math.round(defender.defense * (0.9 + Math.random() * 0.2));
 
   let hitChance;
   if (atk >= 2 * def) {
@@ -50,24 +48,39 @@ export function battleRound(attacker, defender) {
   }
 
   if (Math.random() < hitChance) {
-    // Damage: 70% to 100% of atk*20, or crit: at least 250, up to 2x atk*20
-    let baseDamage = atk * 20;
+    let baseDamage = atk * 30;
     let damage;
     if (isCrit) {
-      // Crit is always at least 250, up to 2x baseDamage, with some randomness
       damage = Math.max(
         250,
-        Math.round(baseDamage * (1.2 + Math.random() * 0.8)) // 1.2x to 2.0x
+        Math.round(baseDamage * (1.2 + Math.random() * 0.8))
       );
     } else {
-      damage = Math.round(baseDamage * (0.7 + Math.random() * 0.3)); // 0.7x to 1.0x
+      damage = Math.round(baseDamage * (0.7 + Math.random() * 0.3));
     }
     defender.hp -= damage;
     if (defender.hp < 0) defender.hp = 0;
     let result = `${attacker.displayName} hits ${defender.displayName} for ${damage} damage!`;
     if (isCrit) result += " Critical hit!";
-    return result;
+    return { log: result, damage, hit: true, isCrit };
   } else {
-    return `${attacker.displayName} missed!`;
+    return { log: `${attacker.displayName} missed!`, damage: 0, hit: false, isCrit: false };
   }
+}
+
+export function checkLevelUp(member) {
+  let leveledUp = false;
+  if (!member.expToNext) member.expToNext = 50;
+  while (member.exp >= member.expToNext) {
+    member.exp -= member.expToNext;
+    member.level = (member.level || 1) + 1;
+    member.expToNext = Math.round(member.expToNext * 1.6);
+    // Increase stats by 15-20%
+    member.maxHp = Math.round(member.maxHp * (1.15 + Math.random() * 0.05));
+    member.hp = member.maxHp;
+    member.attack = Math.round(member.attack * (1.15 + Math.random() * 0.05));
+    member.defense = Math.round(member.defense * (1.15 + Math.random() * 0.05));
+    leveledUp = true;
+  }
+  return leveledUp;
 }
