@@ -15,6 +15,14 @@ export function mapStats(item) {
 
   const displayName = item.brand_name || "Unknown";
 
+  // EXP thresholds by HP tier
+  let expToNext;
+  if (hp < 2000) expToNext = 30;
+  else if (hp < 10000) expToNext = 50;
+  else if (hp < 30000) expToNext = 80;
+  else if (hp < 100000) expToNext = 150;
+  else expToNext = 300;
+
   return { 
     ...item, 
     hp, 
@@ -23,7 +31,7 @@ export function mapStats(item) {
     defense, 
     exp: 0, 
     level: 1,
-    expToNext: 50,
+    expToNext,
     dead: false,
     displayName,
   };
@@ -48,7 +56,10 @@ export function battleRound(attacker, defender) {
   }
 
   if (Math.random() < hitChance) {
-    let baseDamage = atk * 30;
+    // Randomize HP percent between 0.05 and 0.11
+    const hpPercent = 0.05 + Math.random() * 0.06; // 0.05 to 0.11
+    let baseDamage = atk * 3 + defender.hp * hpPercent;
+    // Optionally, keep a small random variation (e.g., ±15%)
     let damage;
     if (isCrit) {
       damage = Math.max(
@@ -56,7 +67,7 @@ export function battleRound(attacker, defender) {
         Math.round(baseDamage * (1.2 + Math.random() * 0.8))
       );
     } else {
-      damage = Math.round(baseDamage * (0.7 + Math.random() * 0.3));
+      damage = Math.round(baseDamage * (0.85 + Math.random() * 0.15)); // 0.85x to 1.0x
     }
     defender.hp -= damage;
     if (defender.hp < 0) defender.hp = 0;
@@ -70,7 +81,14 @@ export function battleRound(attacker, defender) {
 
 export function checkLevelUp(member) {
   let leveledUp = false;
-  if (!member.expToNext) member.expToNext = 50;
+  // Recalculate expToNext for level 2 based on maxHp
+  if (!member.expToNext) {
+    if (member.maxHp < 2000) member.expToNext = 30;
+    else if (member.maxHp < 10000) member.expToNext = 50;
+    else if (member.maxHp < 30000) member.expToNext = 80;
+    else if (member.maxHp < 100000) member.expToNext = 150;
+    else member.expToNext = 300;
+  }
   while (member.exp >= member.expToNext) {
     member.exp -= member.expToNext;
     member.level = (member.level || 1) + 1;

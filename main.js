@@ -1,8 +1,9 @@
 import { mapStats, battleRound, checkLevelUp } from './battle-script.js';
 
 let party = [];
-let enemy = null;
-let turnCount = 0;
+let enemies = [];
+let round = 1; // 1: 1 enemy, 2: 1 enemy, 3: 2 enemies, 4: 3 enemies, 5: win
+let gameOver = false;
 
 const loadBtn = document.getElementById("load");
 const battleContainer = document.getElementById("battle-container");
@@ -23,29 +24,32 @@ loadBtn.addEventListener("click", async () => {
   const data = await res.json();
   party = data.map(item => ({ ...mapStats(item), hasAttackedThisTurn: false }));
 
-  const enemyRes = await fetch(`https://kl4hylidcs3k4fazx4aojk2wpe0fbksa.lambda-url.ap-northeast-1.on.aws/items/random?limit=1&genders=mens`);
-  const enemyData = await enemyRes.json();
-  enemy = mapStats(enemyData[0]);
-
-  turnCount = 0;
+  round = 1;
+  gameOver = false;
+  await loadEnemiesForRound();
   renderBattle();
   moveLoadButtonToBottom();
 });
 
+async function loadEnemiesForRound() {
+  let numEnemies = 1;
+  if (round === 3) numEnemies = 2;
+  if (round >= 4) numEnemies = 3;
+  const enemyRes = await fetch(`https://kl4hylidcs3k4fazx4aojk2wpe0fbksa.lambda-url.ap-northeast-1.on.aws/items/random?limit=${numEnemies}&genders=mens`);
+  const enemyData = await enemyRes.json();
+  enemies = enemyData.map(mapStats);
+}
+
 function renderBattle() {
   battleContainer.innerHTML = "";
 
+  // Party column
   const partyCol = document.createElement("div");
   partyCol.id = "party-column";
   party.forEach((p, index) => {
     const div = document.createElement("div");
     div.className = "item-card";
-    const bg = getLevelColor(p.level || 1);
-    if (bg) div.style.background = bg;
-    if (p.dead) {
-      div.classList.add('dead-card');
-      // Or: div.style.opacity = 0.4;
-    }
+    // EXP bar
     const expPercent = Math.min(100, Math.round((p.exp / (p.expToNext || 50)) * 100));
     const expBarHtml = `
       <div class="exp-bar" style="height:7px;background:#fff;width:100%;border-radius:4px;margin:3px 0 0 0;position:relative;">
@@ -72,34 +76,42 @@ function renderBattle() {
         <div style="height:100%;background:#2ecc71;width:${Math.max(0, Math.round((p.hp/p.maxHp)*100))}%;border-radius:5px;position:absolute;top:0;left:0;z-index:-1;"></div>
       </div>
       ${expBarHtml}
-      <button data-index="${index}" class="attack-btn" ${p.hasAttackedThisTurn || p.dead ? "disabled" : ""}>Attack</button>
+      <button data-index="${index}" class="attack-btn" ${p.hasAttackedThisTurn || p.dead || gameOver ? "disabled" : ""}>Attack</button>
     `;
+    if (p.dead) div.classList.add('dead-card');
+    const bg = getLevelColor(p.level || 1);
+    if (bg) div.style.background = bg;
     partyCol.appendChild(div);
   });
 
+  // Enemy column (vertical stack)
   const enemyCol = document.createElement("div");
   enemyCol.id = "enemy-column";
-  const div = document.createElement("div");
-  div.className = "enemy-card";
-  div.innerHTML = `
-    <h3>${enemy.displayName}</h3>
-    <div class="img-stats" style="display:flex;align-items:flex-start;">
-      <img src="${enemy.image_url}" alt="${enemy.title}" width="120">
-      <div class="stats-column" style="display:flex;flex-direction:column;justify-content:center;margin-left:8px;">
-        <p class="stat-text">ATK: ${enemy.attack}</p>
-        <p class="stat-text">DEF: ${enemy.defense}</p>
+  enemies.forEach((enemy, eIdx) => {
+    const div = document.createElement("div");
+    div.className = "enemy-card";
+    div.innerHTML = `
+      <h3>${enemy.displayName}</h3>
+      <div class="img-stats" style="display:flex;align-items:flex-start;">
+        <img src="${enemy.image_url}" alt="${enemy.title}" width="120">
+        <div class="stats-column" style="display:flex;flex-direction:column;justify-content:center;margin-left:8px;">
+          <p class="stat-text">ATK: ${enemy.attack}</p>
+          <p class="stat-text">DEF: ${enemy.defense}</p>
+        </div>
       </div>
-    </div>
-    <div class="hp-bar" style="width:${(enemy.hp/enemy.maxHp)*100}%">
-      <span class="hp-text">${enemy.hp}/${enemy.maxHp}</span>
-    </div>
-  `;
-  enemyCol.appendChild(div);
+      <div class="hp-bar" style="width:100%;position:relative;">
+        <span class="hp-text">${enemy.hp}/${enemy.maxHp}</span>
+        <div style="height:100%;background:#e74c3c;width:${Math.max(0, Math.round((enemy.hp/enemy.maxHp)*100))}%;border-radius:5px;position:absolute;top:0;left:0;z-index:-1;"></div>
+      </div>
+    `;
+    if (enemy.hp <= 0) div.classList.add('dead-card');
+    enemyCol.appendChild(div);
+  });
 
   battleContainer.appendChild(partyCol);
   battleContainer.appendChild(enemyCol);
 
-  // "All Attack" button above battle log
+  // All Attack button above battle log
   let allBtn = document.getElementById("all-attack");
   if (allBtn) allBtn.remove();
   allBtn = document.createElement("button");
@@ -107,9 +119,8 @@ function renderBattle() {
   allBtn.innerText = "All Attack";
   allBtn.style.margin = "20px auto 0 auto";
   allBtn.style.display = "block";
+  allBtn.disabled = gameOver;
   allBtn.addEventListener("click", async () => await handleAllAttack());
-
-  // Insert above battle log
   document.body.insertBefore(allBtn, battleLog);
 
   document.querySelectorAll(".attack-btn").forEach(btn => {
@@ -118,9 +129,12 @@ function renderBattle() {
 }
 
 async function handleSingleAttack(index) {
-  if (!party[index] || party[index].hasAttackedThisTurn || enemy.hp <= 0) return;
+  if (!party[index] || party[index].hasAttackedThisTurn || party[index].dead || gameOver) return;
+  // Find first alive enemy
+  const targetIdx = enemies.findIndex(e => e.hp > 0);
+  if (targetIdx === -1) return;
 
-  // Animate party member attack (no renderBattle here)
+  // Animate party member attack
   const partyCard = document.querySelectorAll('.item-card')[index];
   if (partyCard) partyCard.classList.add('attacking-party');
   await delay(400);
@@ -128,8 +142,8 @@ async function handleSingleAttack(index) {
 
   // Apply damage and update state
   party[index].hasAttackedThisTurn = true;
-  const result = battleRound(party[index], enemy); // <--- USE result, not log
-  appendLog(result.log, "green");                  // <--- USE result.log
+  const result = battleRound(party[index], enemies[targetIdx]);
+  appendLog(result.log, "green");
 
   if (result.hit && !party[index].dead) {
     const expGain = Math.round(result.damage * 0.1);
@@ -138,35 +152,37 @@ async function handleSingleAttack(index) {
     if (leveledUp) showLevelUpModal(`${party[index].displayName} is now level ${party[index].level}!`, party[index].level);
   }
 
-  // Animate enemy hit flash AFTER attack (no renderBattle here)
-  const enemyCard = document.querySelector('.enemy-card');
+  // Animate enemy hit flash AFTER attack
+  const enemyCard = document.querySelectorAll('.enemy-card')[targetIdx];
   if (enemyCard) enemyCard.classList.add('flash-hit');
   await delay(200);
   if (enemyCard) enemyCard.classList.remove('flash-hit');
 
-  // After damage is applied
-  if (party[index].hp <= 0) {
-    party[index].dead = true;
-  }
+  if (enemies[targetIdx].hp <= 0) enemies[targetIdx].dead = true;
+  if (party[index].hp <= 0) party[index].dead = true;
 
   renderBattle();
 
-  if (enemy.hp <= 0) {
-    handleVictory();
+  if (enemies.every(e => e.hp <= 0)) {
+    await handleVictory();
     return;
   }
-  if (party.every(p => p.hasAttackedThisTurn)) {
+  if (party.every(p => p.hasAttackedThisTurn || p.dead)) {
     await delay(1000);
     await enemyAttack();
   }
 }
 
 async function handleAllAttack() {
-  if (enemy.hp <= 0) return;
+  if (gameOver) return;
   let anyAttack = false;
   for (let i = 0; i < party.length; i++) {
     const p = party[i];
-    if (!p.hasAttackedThisTurn && p.hp > 0) {
+    if (!p.hasAttackedThisTurn && p.hp > 0 && !p.dead) {
+      // Find first alive enemy
+      const targetIdx = enemies.findIndex(e => e.hp > 0);
+      if (targetIdx === -1) break;
+
       // Animate party member attack
       const partyCard = document.querySelectorAll('.item-card')[i];
       if (partyCard) partyCard.classList.add('attacking-party');
@@ -175,7 +191,7 @@ async function handleAllAttack() {
 
       // Apply damage and update state
       p.hasAttackedThisTurn = true;
-      const result = battleRound(p, enemy);
+      const result = battleRound(p, enemies[targetIdx]);
       appendLog(result.log, "green");
 
       if (result.hit && !p.dead) {
@@ -186,56 +202,66 @@ async function handleAllAttack() {
       }
 
       // Animate enemy hit flash AFTER attack
-      const enemyCard = document.querySelector('.enemy-card');
+      const enemyCard = document.querySelectorAll('.enemy-card')[targetIdx];
       if (enemyCard) enemyCard.classList.add('flash-hit');
       await delay(200);
       if (enemyCard) enemyCard.classList.remove('flash-hit');
 
-      // After damage is applied
-      if (p.hp <= 0) {
-        p.dead = true;
-      }
+      if (enemies[targetIdx].hp <= 0) enemies[targetIdx].dead = true;
+      if (p.hp <= 0) p.dead = true;
 
       renderBattle();
 
       anyAttack = true;
-      if (enemy.hp <= 0) {
-        handleVictory();
+      if (enemies.every(e => e.hp <= 0)) {
+        await handleVictory();
         return;
       }
       await delay(700);
     }
   }
-  if (anyAttack && party.every(p => p.hasAttackedThisTurn)) {
+  if (anyAttack && party.every(p => p.hasAttackedThisTurn || p.dead)) {
     await delay(1000);
     await enemyAttack();
   }
 }
 
 async function enemyAttack() {
-  if (enemy.hp <= 0) return;
-  const alive = party.filter(p => p.hp > 0);
-  if (alive.length === 0) return;
-  const target = alive[Math.floor(Math.random() * alive.length)];
-  const targetIndex = party.indexOf(target);
+  if (gameOver) return;
+  const aliveEnemies = enemies.filter(e => e.hp > 0);
+  const aliveParty = party.filter(p => p.hp > 0 && !p.dead);
+  if (aliveEnemies.length === 0 || aliveParty.length === 0) return;
 
-  // Animate enemy attack
-  const enemyCard = document.querySelector('.enemy-card');
-  if (enemyCard) enemyCard.classList.add('attacking-enemy');
-  await delay(400);
-  if (enemyCard) enemyCard.classList.remove('attacking-enemy');
+  for (let i = 0; i < aliveEnemies.length; i++) {
+    const enemy = aliveEnemies[i];
+    // Pick a random alive party member
+    const targets = party.map((p, idx) => ({ p, idx })).filter(obj => obj.p.hp > 0 && !obj.p.dead);
+    if (targets.length === 0) break;
+    const targetObj = targets[Math.floor(Math.random() * targets.length)];
+    const target = targetObj.p;
+    const targetIdx = targetObj.idx;
 
-  // Apply damage and update state
-  const result = battleRound(enemy, party[targetIndex]);
-  appendLog(result.log, "red");
+    // Animate enemy attack
+    const enemyCard = document.querySelectorAll('.enemy-card')[enemies.indexOf(enemy)];
+    if (enemyCard) enemyCard.classList.add('attacking-enemy');
+    await delay(400);
+    if (enemyCard) enemyCard.classList.remove('attacking-enemy');
+
+    // Apply damage and update state
+    const result = battleRound(enemy, target);
+    appendLog(result.log, "red");
+    if (target.hp <= 0) target.dead = true;
+
+    // Animate party member hit flash AFTER attack
+    const partyCard = document.querySelectorAll('.item-card')[targetIdx];
+    if (partyCard) partyCard.classList.add('flash-hit');
+    await delay(200);
+    if (partyCard) partyCard.classList.remove('flash-hit');
+
+    renderBattle();
+    await delay(400);
+  }
   resetTurn();
-
-  // Animate party member hit flash AFTER attack
-  const partyCard = document.querySelectorAll('.item-card')[targetIndex];
-  if (partyCard) partyCard.classList.add('flash-hit');
-  await delay(200);
-  if (partyCard) partyCard.classList.remove('flash-hit');
-
   renderBattle();
 }
 
@@ -244,14 +270,18 @@ function resetTurn() {
 }
 
 async function handleVictory() {
-  appendLog(`${enemy.displayName} is defeated!`, "red");
+  if (round === 4) {
+    appendLog("Congratulations, your clothing is superior! You win!", "yellow");
+    gameOver = true;
+    renderBattle();
+    return;
+  }
+  round++;
+  appendLog("All enemies defeated!", "cyan");
   await delay(1000);
-  // Fetch new enemy
-  const enemyRes = await fetch(`https://kl4hylidcs3k4fazx4aojk2wpe0fbksa.lambda-url.ap-northeast-1.on.aws/items/random?limit=1&genders=mens`);
-  const enemyData = await enemyRes.json();
-  enemy = mapStats(enemyData[0]);
-  appendLog(`${enemy.displayName} entered the fight!`, "cyan");
-  party.forEach(p => p.hasAttackedThisTurn = false); // <-- Reset attacks
+  await loadEnemiesForRound();
+  appendLog(`${enemies.map(e => e.displayName).join(", ")} entered the fight!`, "cyan");
+  party.forEach(p => p.hasAttackedThisTurn = false);
   renderBattle();
 }
 
