@@ -281,6 +281,16 @@ async function enemyAttack() {
     renderBattle();
     await delay(400);
   }
+
+  // Check for defeat after all enemy attacks
+  if (party.every(p => p.hp <= 0 || p.dead)) {
+    appendLog("Game Over! All your party members have been defeated.", "red");
+    gameOver = true;
+    renderBattle();
+    showTryAgainButton(); // <-- Add this line
+    return;
+  }
+
   resetTurn();
   renderBattle();
 }
@@ -331,6 +341,36 @@ function getLevelColor(level) {
   // Level 1: default (no override), Level 2+: colored
   const colors = [null, null, "#3498db", "#2ecc71", "#9b59b6", "#c9a101ff", "#e89c59ff", "#ff7161ff", "#e5a8ffff", "#7dffe5ff", "#f31212ff", "#2764ffff", "#0e8e00ff"];
   return colors[level] || null;
+}
+
+function showTryAgainButton() {
+  // Remove existing button if present
+  let tryBtn = document.getElementById("try-again-btn");
+  if (tryBtn) tryBtn.remove();
+
+  tryBtn = document.createElement("button");
+  tryBtn.id = "try-again-btn";
+  tryBtn.innerText = "Try Again";
+  tryBtn.style.display = "block";
+  tryBtn.style.margin = "30px auto";
+  tryBtn.style.fontSize = "1.2em";
+  tryBtn.onclick = () => {
+    // Reset UI: show party creation, hide battle, clear log
+    document.getElementById('party-creation').style.display = "";
+    document.getElementById('battle-container').innerHTML = "";
+    document.getElementById('battle-log').innerHTML = "";
+    const modal = document.getElementById('levelup-modal');
+    if (modal) modal.style.display = "none";
+    // Hide the button itself
+    tryBtn.remove();
+    // Show the create party button again
+    const createBtn = document.getElementById('load');
+    if (createBtn) {
+      createBtn.style.display = "block";
+      createBtn.innerText = "Create Party";
+    }
+  };
+  document.body.appendChild(tryBtn);
 }
 
 
