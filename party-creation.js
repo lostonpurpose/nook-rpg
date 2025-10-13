@@ -23,16 +23,16 @@ function renderPartyForm() {
   partyCreationDiv.innerHTML = `
     <h2>Create Your Party</h2>
     <div id="char-form">
-      <h3>Character ${currentChar + 1}</h3>
+      <h3>Character No. ${currentChar + 1}</h3>
       <div>
-        <label for="brand-select">Brand:</label>
+        <label for="brand-select">Choose a Brand:</label>
         <select id="brand-select">
           <option value="">(Random Brand)</option>
           ${brands.map(b => `<option value="${b.id}" ${selectedBrand === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}
         </select>
       </div>
+      <button id="get-filtered">Select this Brand</button>
       <button id="get-random">Get Random Character</button>
-      <button id="get-filtered">Get Character With Brand</button>
     </div>
     <div id="party-preview">
       <h4>Party Preview:</h4>

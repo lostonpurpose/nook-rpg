@@ -4,6 +4,10 @@ window.startBattleWithParty = function(newParty) {
   const createBtn = document.getElementById('load');
   if (createBtn) createBtn.style.display = "none";
 
+  // Show the battle log only when battle starts
+  const battleLog = document.getElementById("battle-log");
+  if (battleLog) battleLog.style.display = "";
+
   party = newParty.map(p => ({
     ...p,
     hasAttackedThisTurn: false,
@@ -28,6 +32,7 @@ let allAttackUsed = false;
 const loadBtn = document.getElementById("load");
 const battleContainer = document.getElementById("battle-container");
 const battleLog = document.getElementById("battle-log");
+// if (battleLog) battleLog.style.display = "";
 
 // Move load button below battle log after first use
 function moveLoadButtonToBottom() {
@@ -504,7 +509,9 @@ async function handleVictory() {
   appendLog("All enemies defeated!", "cyan");
   await delay(1000);
   await loadEnemiesForRound();
-  appendLog(`${enemies.map(e => e.displayName).join(", ")} entered the fight!`, "cyan");
+  const enterMsg = `${enemies.map(e => e.displayName).join(", ")} entered the fight!`;
+  appendLog(enterMsg, "cyan");
+  showLevelUpModal(enterMsg, 0, "#00ffff"); // Cyan background
   startPlayerTurn();
 }
 
@@ -522,11 +529,11 @@ function appendLog(text, color = null) {
   logDiv.scrollTop = logDiv.scrollHeight;
 }
 
-function showLevelUpModal(msg, level) {
+function showLevelUpModal(msg, level, colorOverride = null) {
   const modal = document.getElementById('levelup-modal');
   modal.innerText = msg;
   modal.style.display = 'block';
-  modal.style.background = getLevelColor(level);
+  modal.style.background = colorOverride || getLevelColor(level);
   setTimeout(() => { modal.style.display = 'none'; }, 2000);
 }
 
