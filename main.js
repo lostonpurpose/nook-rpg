@@ -1,3 +1,13 @@
+// Expose a function for party-creation.js to start the game
+window.startBattleWithParty = function(newParty) {
+  party = newParty.map(p => ({ ...p, hasAttackedThisTurn: false }));
+  round = 1;
+  gameOver = false;
+  loadEnemiesForRound().then(() => {
+    renderBattle();
+    moveLoadButtonToBottom();
+  });
+};
 import { mapStats, battleRound, checkLevelUp } from './battle-script.js';
 
 let party = [];
@@ -18,18 +28,18 @@ function moveLoadButtonToBottom() {
   loadBtn.style.display = "block";
 }
 
-loadBtn.addEventListener("click", async () => {
-  const url = `https://kl4hylidcs3k4fazx4aojk2wpe0fbksa.lambda-url.ap-northeast-1.on.aws/items/random?limit=3&genders=mens`;
-  const res = await fetch(url);
-  const data = await res.json();
-  party = data.map(item => ({ ...mapStats(item), hasAttackedThisTurn: false }));
+// loadBtn.addEventListener("click", async () => {
+//   const url = `https://kl4hylidcs3k4fazx4aojk2wpe0fbksa.lambda-url.ap-northeast-1.on.aws/items/random?limit=3&genders=mens`;
+//   const res = await fetch(url);
+//   const data = await res.json();
+//   party = data.map(item => ({ ...mapStats(item), hasAttackedThisTurn: false }));
 
-  round = 1;
-  gameOver = false;
-  await loadEnemiesForRound();
-  renderBattle();
-  moveLoadButtonToBottom();
-});
+//   round = 1;
+//   gameOver = false;
+//   await loadEnemiesForRound();
+//   renderBattle();
+//   moveLoadButtonToBottom();
+// });
 
 async function loadEnemiesForRound() {
   let numEnemies = 1;

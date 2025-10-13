@@ -12,6 +12,12 @@ h3 {
   font-size: 10px;
 }
 
+.selected {
+  background: #0ff;
+  color: #222;
+  font-weight: bold;
+}
+
 #battle-container {
   display: flex;
   flex-direction: row;
