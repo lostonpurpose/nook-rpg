@@ -108,9 +108,9 @@ function renderBattle() {
     // EXP bar
     const expPercent = Math.min(100, Math.round((p.exp / (p.expToNext || 50)) * 100));
     const expBarHtml = `
-      <div class="exp-bar" style="height:7px;background:#fff;width:100%;border-radius:4px;margin:3px 0 0 0;position:relative;">
-        <div style="height:100%;background:#0ff;width:${expPercent}%;border-radius:4px;position:absolute;top:0;left:0;"></div>
-        <span class="exp-text" style="position:absolute;left:6px;top:0;font-size:8px;line-height:7px;color:#222;z-index:1;">
+      <div class="exp-bar" style="height:11px;background:#fff;width:100%;border-radius:5px;margin:3px 0 0 0;position:relative;">
+        <div style="height:100%;background:#0ff;width:${expPercent}%;border-radius:5px;position:absolute;top:0;left:0;"></div>
+        <span class="exp-text" style="position:absolute;left:6px;font-size:8px;line-height:7px;color:#222;z-index:1;">
           ${p.exp}/${p.expToNext}
         </span>
       </div>
@@ -123,14 +123,15 @@ function renderBattle() {
 
     div.innerHTML = `
       <div style="display:flex;align-items:center;">
-        <span style="font-size:10px;font-weight:bold;margin-right:6px;">Lv.${p.level || 1}</span>
+        
         <h3 style="flex:1;text-align:left;">${p.displayName}</h3>
       </div>
       <div class="img-stats" style="display:flex;align-items:flex-start;">
         <img src="${p.image_url}" alt="${p.title}" width="120" height="50">
         <div class="stats-column" style="display:flex;flex-direction:column;justify-content:center;margin-left:8px;">
-          <p class="stat-text">ATK: ${p.attack}</p>
-          <p class="stat-text">DEF: ${p.defense}</p>
+          <p class="stat-text">Lv.${p.level || 1}</p>
+          <p class="stat-text">ATK:${p.attack}</p>
+          <p class="stat-text">DEF:${p.defense}</p>
         </div>
       </div>
       <div class="hp-bar">
