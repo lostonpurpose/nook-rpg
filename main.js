@@ -1,11 +1,20 @@
 // Expose a function for party-creation.js to start the game
 window.startBattleWithParty = function(newParty) {
-  party = newParty.map(p => ({ ...p, hasAttackedThisTurn: false }));
+  // Hide the create party button
+  const createBtn = document.getElementById('load');
+  if (createBtn) createBtn.style.display = "none";
+
+  party = newParty.map(p => ({
+    ...p,
+    hasAttackedThisTurn: false,
+    abilities: [],
+    chosenAbilities: []
+  }));
   round = 1;
   gameOver = false;
   loadEnemiesForRound().then(() => {
     renderBattle();
-    moveLoadButtonToBottom();
+    // moveLoadButtonToBottom();
   });
 };
 import { mapStats, battleRound, checkLevelUp } from './battle-script.js';
@@ -14,6 +23,7 @@ let party = [];
 let enemies = [];
 let round = 1; // 1: 1 enemy, 2: 1 enemy, 3: 2 enemies, 4: 3 enemies, 5: win
 let gameOver = false;
+let allAttackUsed = false;
 
 const loadBtn = document.getElementById("load");
 const battleContainer = document.getElementById("battle-container");
@@ -43,11 +53,42 @@ function moveLoadButtonToBottom() {
 
 async function loadEnemiesForRound() {
   let numEnemies = 1;
-  if (round === 3) numEnemies = 2;
-  if (round >= 4) numEnemies = 3;
+  let hpRanges = [];
+
+  if (round === 1) {
+    numEnemies = 1;
+    hpRanges = [[2500, 5200]];
+  } else if (round === 2) {
+    numEnemies = 1;
+    hpRanges = [[7500, 10000]];
+  } else if (round === 3) {
+    numEnemies = 2;
+    hpRanges = [
+      [12000, 22000],
+      [7500, 15000]
+    ];
+  } else if (round >= 4) {
+    numEnemies = 3;
+    hpRanges = [
+      [20000, 30000],
+      [20000, 30000],
+      [30000, 50000]
+    ];
+  }
+
   const enemyRes = await fetch(`https://kl4hylidcs3k4fazx4aojk2wpe0fbksa.lambda-url.ap-northeast-1.on.aws/items/random?limit=${numEnemies}&genders=mens`);
   const enemyData = await enemyRes.json();
-  enemies = enemyData.map(mapStats);
+  enemies = enemyData.map((item, idx) => {
+    const enemy = mapStats(item, true);
+    // Set HP to the specified range for this enemy
+    if (hpRanges[idx]) {
+      const [minHp, maxHp] = hpRanges[idx];
+      const hp = Math.floor(Math.random() * (maxHp - minHp + 1)) + minHp;
+      enemy.hp = hp;
+      enemy.maxHp = hp;
+    }
+    return enemy;
+  });
 }
 
 function renderBattle() {
@@ -69,6 +110,12 @@ function renderBattle() {
         </span>
       </div>
     `;
+    // For party members
+    const hpPercent = Math.max(0, Math.round((p.hp / p.maxHp) * 100));
+    let hpColor = "#2ecc71"; // green
+    if (hpPercent < 25) hpColor = "#e74c3c"; // red
+    else if (hpPercent < 50) hpColor = "#f1c40f"; // yellow
+
     div.innerHTML = `
       <div style="display:flex;align-items:center;">
         <span style="font-size:10px;font-weight:bold;margin-right:6px;">Lv.${p.level || 1}</span>
@@ -82,7 +129,7 @@ function renderBattle() {
         </div>
       </div>
       <div class="hp-bar">
-        <div class="hp-fill" style="width:${Math.max(0, Math.round((p.hp/p.maxHp)*100))}%;"></div>
+        <div class="hp-fill" style="width:${hpPercent}%;background:${hpColor};"></div>
         <span class="hp-text">${p.hp}/${p.maxHp}</span>
       </div>
       ${expBarHtml}
@@ -100,6 +147,11 @@ function renderBattle() {
   enemies.forEach((enemy, eIdx) => {
     const div = document.createElement("div");
     div.className = "enemy-card";
+    const hpPercent = Math.max(0, Math.round((enemy.hp / enemy.maxHp) * 100));
+    let hpColor = "#2ecc71";
+    if (hpPercent < 25) hpColor = "#e74c3c";
+    else if (hpPercent < 50) hpColor = "#f1c40f";
+
     div.innerHTML = `
       <h3>${enemy.displayName}</h3>
       <div class="img-stats" style="display:flex;align-items:flex-start;">
@@ -110,7 +162,7 @@ function renderBattle() {
         </div>
       </div>
       <div class="hp-bar">
-        <div class="hp-fill" style="width:${Math.max(0, Math.round((enemy.hp/enemy.maxHp)*100))}%;"></div>
+        <div class="hp-fill" style="width:${hpPercent}%;background:${hpColor};"></div>
         <span class="hp-text">${enemy.hp}/${enemy.maxHp}</span>
       </div>
     `;
@@ -125,16 +177,16 @@ function renderBattle() {
   let allBtn = document.getElementById("all-attack");
   if (allBtn) allBtn.remove();
   allBtn = document.createElement("button");
-
-
   allBtn.id = "all-attack";
   allBtn.innerText = "All Attack";
-  allBtn.style.margin = "20px auto 0 auto";
-  allBtn.style.display = "block";
-  // Correctly determine if all should be disabled
-  const allAttacked = party.filter(p => !p.dead && p.hp > 0).every(p => p.hasAttackedThisTurn);
-  allBtn.disabled = gameOver || allAttacked;
-  allBtn.addEventListener("click", async () => await handleAllAttack());
+  allBtn.disabled = allAttackUsed || gameOver;
+  allBtn.style.opacity = allBtn.disabled ? "0.5" : "1";
+  allBtn.addEventListener("click", async () => {
+    allBtn.disabled = true;
+    allBtn.style.opacity = "0.5";
+    allAttackUsed = true;
+    await handleAllAttack();
+  });
   document.body.insertBefore(allBtn, battleLog);
 
   document.querySelectorAll(".attack-btn").forEach(btn => {
@@ -142,8 +194,74 @@ function renderBattle() {
   });
 }
 
+function startPlayerTurn() {
+  allAttackUsed = false;
+  party.forEach(p => p.hasAttackedThisTurn = false); // <-- Add this line
+  renderBattle();
+}
+
 async function handleSingleAttack(index) {
   if (!party[index] || party[index].hasAttackedThisTurn || party[index].dead || gameOver) return;
+  const attacker = party[index];
+  attacker.hasAttackedThisTurn = true;
+
+  // If attackAll ability, attack all alive enemies
+  if (attacker.chosenAbilities && attacker.chosenAbilities.includes('attackAll')) {
+    let hitAny = false;
+    for (let i = 0; i < enemies.length; i++) {
+      if (enemies[i].hp > 0) {
+        // Animate attack
+        const partyCard = document.querySelectorAll('.item-card')[index];
+        if (partyCard) partyCard.classList.add('attacking-party');
+        await delay(200);
+        if (partyCard) partyCard.classList.remove('attacking-party');
+
+        const result = battleRound(attacker, enemies[i]);
+        appendLog(result.log, result.isCrit ? "orange" : "green");
+        if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
+
+        // Heal on attack
+        if (attacker.chosenAbilities && attacker.chosenAbilities.includes('healOnAttack')) {
+          const heal = Math.round(attacker.maxHp * 0.05);
+          attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+          appendLog(`${attacker.displayName} heals for ${heal} HP!`, "cyan");
+        }
+
+        if (result.hit && !attacker.dead) {
+          const expGain = Math.round(result.damage * 0.1);
+          attacker.exp += expGain;
+          const leveledUp = checkLevelUp(attacker);
+          if (leveledUp) {
+            showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
+            await maybeShowAbilityChoice(attacker);
+          }
+        }
+
+        // Animate enemy hit flash
+        const enemyCard = document.querySelectorAll('.enemy-card')[i];
+        if (enemyCard) enemyCard.classList.add('flash-hit');
+        await delay(100);
+        if (enemyCard) enemyCard.classList.remove('flash-hit');
+
+        if (enemies[i].hp <= 0) enemies[i].dead = true;
+        hitAny = true;
+      }
+    }
+    if (attacker.hp <= 0) attacker.dead = true;
+    renderBattle();
+
+    if (enemies.every(e => e.hp <= 0)) {
+      await handleVictory();
+      return;
+    }
+    if (party.every(p => p.hasAttackedThisTurn || p.dead)) {
+      await delay(1000);
+      await enemyAttack();
+    }
+    return;
+  }
+
+  // --- Normal single attack (existing code) ---
   // Pick a random alive enemy
   const aliveEnemies = enemies.map((e, idx) => ({ e, idx })).filter(obj => obj.e.hp > 0);
   if (aliveEnemies.length === 0) return;
@@ -158,15 +276,25 @@ async function handleSingleAttack(index) {
   if (partyCard) partyCard.classList.remove('attacking-party');
 
   // Apply damage and update state
-  party[index].hasAttackedThisTurn = true;
-  const result = battleRound(party[index], enemies[targetIdx]);
-  appendLog(result.log, "green");
+  const result = battleRound(attacker, enemies[targetIdx]);
+  appendLog(result.log, result.isCrit ? "orange" : "green");
+  if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
 
-  if (result.hit && !party[index].dead) {
+  // Heal on attack
+  if (attacker.chosenAbilities && attacker.chosenAbilities.includes('healOnAttack')) {
+    const heal = Math.round(attacker.maxHp * 0.05);
+    attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+    appendLog(`${attacker.displayName} heals for ${heal} HP!`, "cyan");
+  }
+
+  if (result.hit && !attacker.dead) {
     const expGain = Math.round(result.damage * 0.1);
-    party[index].exp += expGain;
-    const leveledUp = checkLevelUp(party[index]);
-    if (leveledUp) showLevelUpModal(`${party[index].displayName} is now level ${party[index].level}!`, party[index].level);
+    attacker.exp += expGain;
+    const leveledUp = checkLevelUp(attacker);
+    if (leveledUp) {
+      showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
+      await maybeShowAbilityChoice(attacker);
+    }
   }
 
   // Animate enemy hit flash AFTER attack
@@ -176,7 +304,7 @@ async function handleSingleAttack(index) {
   if (enemyCard) enemyCard.classList.remove('flash-hit');
 
   if (enemies[targetIdx].hp <= 0) enemies[targetIdx].dead = true;
-  if (party[index].hp <= 0) party[index].dead = true;
+  if (attacker.hp <= 0) attacker.dead = true;
 
   renderBattle();
 
@@ -196,12 +324,69 @@ async function handleAllAttack() {
   for (let i = 0; i < party.length; i++) {
     const p = party[i];
     if (!p.hasAttackedThisTurn && p.hp > 0 && !p.dead) {
-      // Pick a random alive enemy
+      // --- Attack all enemies if ability ---
+      if (p.chosenAbilities && p.chosenAbilities.includes('attackAll')) {
+        let attacked = false;
+        for (let j = 0; j < enemies.length; j++) {
+          if (enemies[j].hp > 0) {
+            attacked = true;
+            // Animate party member attack
+            const partyCard = document.querySelectorAll('.item-card')[i];
+            if (partyCard) partyCard.classList.add('attacking-party');
+            await delay(200);
+            if (partyCard) partyCard.classList.remove('attacking-party');
+
+            const result = battleRound(p, enemies[j]);
+            appendLog(result.log, result.isCrit ? "orange" : "green");
+            if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
+
+            // Heal on attack
+            if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
+              const heal = Math.round(p.maxHp * 0.05);
+              p.hp = Math.min(p.maxHp, p.hp + heal);
+              appendLog(`${p.displayName} heals for ${heal} HP!`, "cyan");
+            }
+
+            if (result.hit && !p.dead) {
+              const expGain = Math.round(result.damage * 0.1);
+              p.exp += expGain;
+              const leveledUp = checkLevelUp(p);
+              if (leveledUp) {
+                showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+                await maybeShowAbilityChoice(p);
+              }
+            }
+
+            // Animate enemy hit flash
+            const enemyCard = document.querySelectorAll('.enemy-card')[j];
+            if (enemyCard) enemyCard.classList.add('flash-hit');
+            await delay(100);
+            if (enemyCard) enemyCard.classList.remove('flash-hit');
+
+            if (enemies[j].hp <= 0) enemies[j].dead = true;
+          }
+        }
+        if (attacked) {
+          p.hasAttackedThisTurn = true;
+          anyAttack = true;
+        }
+        if (p.hp <= 0) p.dead = true;
+        renderBattle();
+
+        if (enemies.every(e => e.hp <= 0)) {
+          await handleVictory();
+          return;
+        }
+        await delay(700);
+        continue; // Go to next party member
+      }
+
+      // --- Normal single attack (existing code) ---
       const aliveEnemies = enemies.map((e, idx) => ({ e, idx })).filter(obj => obj.e.hp > 0);
-      if (aliveEnemies.length === 0) return;
+      if (aliveEnemies.length === 0) continue;
       const targetObj = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
       const targetIdx = targetObj.idx;
-      if (targetIdx === -1) break;
+      if (targetIdx === -1) continue;
 
       // Animate party member attack
       const partyCard = document.querySelectorAll('.item-card')[i];
@@ -209,16 +394,25 @@ async function handleAllAttack() {
       await delay(400);
       if (partyCard) partyCard.classList.remove('attacking-party');
 
-      // Apply damage and update state
-      p.hasAttackedThisTurn = true;
       const result = battleRound(p, enemies[targetIdx]);
-      appendLog(result.log, "green");
+      appendLog(result.log, result.isCrit ? "orange" : "green");
+      if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
+
+      // Heal on attack
+      if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
+        const heal = Math.round(p.maxHp * 0.05);
+        p.hp = Math.min(p.maxHp, p.hp + heal);
+        appendLog(`${p.displayName} heals for ${heal} HP!`, "cyan");
+      }
 
       if (result.hit && !p.dead) {
         const expGain = Math.round(result.damage * 0.1);
         p.exp += expGain;
         const leveledUp = checkLevelUp(p);
-        if (leveledUp) showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+        if (leveledUp) {
+          showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+          await maybeShowAbilityChoice(p);
+        }
       }
 
       // Animate enemy hit flash AFTER attack
@@ -230,6 +424,7 @@ async function handleAllAttack() {
       if (enemies[targetIdx].hp <= 0) enemies[targetIdx].dead = true;
       if (p.hp <= 0) p.dead = true;
 
+      p.hasAttackedThisTurn = true;
       renderBattle();
 
       anyAttack = true;
@@ -291,8 +486,7 @@ async function enemyAttack() {
     return;
   }
 
-  resetTurn();
-  renderBattle();
+  startPlayerTurn();
 }
 
 function resetTurn() {
@@ -311,8 +505,7 @@ async function handleVictory() {
   await delay(1000);
   await loadEnemiesForRound();
   appendLog(`${enemies.map(e => e.displayName).join(", ")} entered the fight!`, "cyan");
-  party.forEach(p => p.hasAttackedThisTurn = false);
-  renderBattle();
+  startPlayerTurn();
 }
 
 function delay(ms) {
@@ -373,6 +566,78 @@ function showTryAgainButton() {
   document.body.appendChild(tryBtn);
 }
 
+const ABILITY_OPTIONS = {
+  2: [
+    { key: 'attackAll', label: 'Attack all enemies on attack' },
+    { key: 'critUp', label: 'Crit chance increased by 5%' }
+  ],
+  4: [
+    { key: 'healOnAttack', label: 'Heal 5% of max HP on attack' }
+  ],
+  6: [
+    { key: 'berserker', label: 'Berserker: double attack, half defense' }
+  ]
+};
+
+async function maybeShowAbilityChoice(char) {
+  const level = char.level;
+  let options = [];
+  if (level === 2) {
+    options = ABILITY_OPTIONS[2].filter(opt => !char.chosenAbilities.includes(opt.key));
+  } else if (level === 4) {
+    // At 4, offer the one not chosen at 2, plus heal
+    options = ABILITY_OPTIONS[2].filter(opt => !char.chosenAbilities.includes(opt.key))
+      .concat(ABILITY_OPTIONS[4]);
+  } else if (level === 6) {
+    // At 7, offer the only one not chosen at 2/4, plus berserker
+    const notChosen = ABILITY_OPTIONS[2].filter(opt => !char.chosenAbilities.includes(opt.key));
+    options = notChosen.concat(ABILITY_OPTIONS[6]);
+  }
+  if (options.length === 0) return;
+
+  // Show modal and wait for user choice
+  await showAbilityChoiceModal(char, options);
+}
+
+function showAbilityChoiceModal(char, options) {
+  return new Promise(resolve => {
+    let modal = document.getElementById('ability-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'ability-modal';
+      modal.style.position = 'fixed';
+      modal.style.top = '30%';
+      modal.style.left = '50%';
+      modal.style.transform = 'translate(-50%,-50%)';
+      modal.style.background = '#222';
+      modal.style.color = '#fff';
+      modal.style.padding = '24px 32px';
+      modal.style.borderRadius = '12px';
+      modal.style.fontSize = '16px';
+      modal.style.zIndex = 1001;
+      modal.style.textAlign = 'center';
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML = `<h3>Level Up Ability Choice for ${char.displayName}</h3>
+      <p>Choose one:</p>
+      ${options.map(opt => `<button class="ability-choice-btn" data-key="${opt.key}" style="margin:8px 0;display:block;width:100%">${opt.label}</button>`).join('')}
+    `;
+    modal.style.display = 'block';
+
+    document.querySelectorAll('.ability-choice-btn').forEach(btn => {
+      btn.onclick = () => {
+        const key = btn.dataset.key;
+        char.chosenAbilities.push(key);
+        if (key === 'berserker') {
+          char.attack = Math.round(char.attack * 2);
+          char.defense = Math.max(1, Math.round(char.defense / 2));
+        }
+        modal.style.display = 'none';
+        resolve();
+      };
+    });
+  });
+}
 
 // need death
 // need hp bar to decrease visually

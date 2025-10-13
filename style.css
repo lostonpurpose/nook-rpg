@@ -73,6 +73,12 @@ button:disabled {
   cursor: default;
 }
 
+/* In your style.css */
+#all-attack:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 #all-attack {
   display: block;
   margin: 15px auto;
