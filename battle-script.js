@@ -17,11 +17,11 @@ export function mapStats(item) {
 
   // EXP thresholds by HP tier
   let expToNext;
-  if (hp < 2000) expToNext = 30;
-  else if (hp < 10000) expToNext = 50;
-  else if (hp < 30000) expToNext = 80;
-  else if (hp < 100000) expToNext = 150;
-  else expToNext = 300;
+  if (hp < 2000) expToNext = 50;
+  else if (hp < 10000) expToNext = 80;
+  else if (hp < 30000) expToNext = 150;
+  else if (hp < 100000) expToNext = 270;
+  else expToNext = 400;
 
   return { 
     ...item, 
@@ -58,7 +58,7 @@ export function battleRound(attacker, defender) {
   if (Math.random() < hitChance) {
     // Randomize HP percent between 0.05 and 0.11
     const hpPercent = 0.05 + Math.random() * 0.06; // 0.05 to 0.11
-    let baseDamage = atk * 3 + defender.hp * hpPercent;
+    let baseDamage = atk * 7 + defender.hp * hpPercent;
     // Optionally, keep a small random variation (e.g., ±15%)
     let damage;
     if (isCrit) {
@@ -83,11 +83,11 @@ export function checkLevelUp(member) {
   let leveledUp = false;
   // Recalculate expToNext for level 2 based on maxHp
   if (!member.expToNext) {
-    if (member.maxHp < 2000) member.expToNext = 30;
-    else if (member.maxHp < 10000) member.expToNext = 50;
-    else if (member.maxHp < 30000) member.expToNext = 80;
-    else if (member.maxHp < 100000) member.expToNext = 150;
-    else member.expToNext = 300;
+    if (member.maxHp < 2000) member.expToNext = 50;
+    else if (member.maxHp < 10000) member.expToNext = 80;
+    else if (member.maxHp < 30000) member.expToNext = 150;
+    else if (member.maxHp < 100000) member.expToNext = 270;
+    else member.expToNext = 400;
   }
   while (member.exp >= member.expToNext) {
     member.exp -= member.expToNext;
@@ -95,7 +95,7 @@ export function checkLevelUp(member) {
     member.expToNext = Math.round(member.expToNext * 1.6);
     // Increase stats by 15-20%
     member.maxHp = Math.round(member.maxHp * (1.15 + Math.random() * 0.05));
-    member.hp = member.maxHp;
+    member.hp = Math.min(member.hp + Math.round(member.maxHp * 0.25), member.maxHp); // Heal 25% of new maxHp on level up
     member.attack = Math.round(member.attack * (1.15 + Math.random() * 0.05));
     member.defense = Math.round(member.defense * (1.15 + Math.random() * 0.05));
     leveledUp = true;

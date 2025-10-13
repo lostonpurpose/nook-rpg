@@ -65,15 +65,15 @@ function renderBattle() {
         <h3 style="flex:1;text-align:left;">${p.displayName}</h3>
       </div>
       <div class="img-stats" style="display:flex;align-items:flex-start;">
-        <img src="${p.image_url}" alt="${p.title}" width="120">
+        <img src="${p.image_url}" alt="${p.title}" width="120" height="50">
         <div class="stats-column" style="display:flex;flex-direction:column;justify-content:center;margin-left:8px;">
           <p class="stat-text">ATK: ${p.attack}</p>
           <p class="stat-text">DEF: ${p.defense}</p>
         </div>
       </div>
-      <div class="hp-bar" style="width:100%;position:relative;">
+      <div class="hp-bar">
+        <div class="hp-fill" style="width:${Math.max(0, Math.round((p.hp/p.maxHp)*100))}%;"></div>
         <span class="hp-text">${p.hp}/${p.maxHp}</span>
-        <div style="height:100%;background:#2ecc71;width:${Math.max(0, Math.round((p.hp/p.maxHp)*100))}%;border-radius:5px;position:absolute;top:0;left:0;z-index:-1;"></div>
       </div>
       ${expBarHtml}
       <button data-index="${index}" class="attack-btn" ${p.hasAttackedThisTurn || p.dead || gameOver ? "disabled" : ""}>Attack</button>
@@ -93,15 +93,15 @@ function renderBattle() {
     div.innerHTML = `
       <h3>${enemy.displayName}</h3>
       <div class="img-stats" style="display:flex;align-items:flex-start;">
-        <img src="${enemy.image_url}" alt="${enemy.title}" width="120">
+        <img src="${enemy.image_url}" alt="${enemy.title}" width="120" height="50">
         <div class="stats-column" style="display:flex;flex-direction:column;justify-content:center;margin-left:8px;">
           <p class="stat-text">ATK: ${enemy.attack}</p>
           <p class="stat-text">DEF: ${enemy.defense}</p>
         </div>
       </div>
-      <div class="hp-bar" style="width:100%;position:relative;">
+      <div class="hp-bar">
+        <div class="hp-fill" style="width:${Math.max(0, Math.round((enemy.hp/enemy.maxHp)*100))}%;"></div>
         <span class="hp-text">${enemy.hp}/${enemy.maxHp}</span>
-        <div style="height:100%;background:#e74c3c;width:${Math.max(0, Math.round((enemy.hp/enemy.maxHp)*100))}%;border-radius:5px;position:absolute;top:0;left:0;z-index:-1;"></div>
       </div>
     `;
     if (enemy.hp <= 0) div.classList.add('dead-card');
@@ -115,11 +115,15 @@ function renderBattle() {
   let allBtn = document.getElementById("all-attack");
   if (allBtn) allBtn.remove();
   allBtn = document.createElement("button");
+
+
   allBtn.id = "all-attack";
   allBtn.innerText = "All Attack";
   allBtn.style.margin = "20px auto 0 auto";
   allBtn.style.display = "block";
-  allBtn.disabled = gameOver;
+  // Correctly determine if all should be disabled
+  const allAttacked = party.filter(p => !p.dead && p.hp > 0).every(p => p.hasAttackedThisTurn);
+  allBtn.disabled = gameOver || allAttacked;
   allBtn.addEventListener("click", async () => await handleAllAttack());
   document.body.insertBefore(allBtn, battleLog);
 
@@ -130,8 +134,11 @@ function renderBattle() {
 
 async function handleSingleAttack(index) {
   if (!party[index] || party[index].hasAttackedThisTurn || party[index].dead || gameOver) return;
-  // Find first alive enemy
-  const targetIdx = enemies.findIndex(e => e.hp > 0);
+  // Pick a random alive enemy
+  const aliveEnemies = enemies.map((e, idx) => ({ e, idx })).filter(obj => obj.e.hp > 0);
+  if (aliveEnemies.length === 0) return;
+  const targetObj = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+  const targetIdx = targetObj.idx;
   if (targetIdx === -1) return;
 
   // Animate party member attack
@@ -179,8 +186,11 @@ async function handleAllAttack() {
   for (let i = 0; i < party.length; i++) {
     const p = party[i];
     if (!p.hasAttackedThisTurn && p.hp > 0 && !p.dead) {
-      // Find first alive enemy
-      const targetIdx = enemies.findIndex(e => e.hp > 0);
+      // Pick a random alive enemy
+      const aliveEnemies = enemies.map((e, idx) => ({ e, idx })).filter(obj => obj.e.hp > 0);
+      if (aliveEnemies.length === 0) return;
+      const targetObj = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+      const targetIdx = targetObj.idx;
       if (targetIdx === -1) break;
 
       // Animate party member attack
@@ -309,7 +319,7 @@ function showLevelUpModal(msg, level) {
 
 function getLevelColor(level) {
   // Level 1: default (no override), Level 2+: colored
-  const colors = [null, null, "#3498db", "#2ecc71", "#9b59b6", "#f1c40f", "#e67e22", "#e74c3c"];
+  const colors = [null, null, "#3498db", "#2ecc71", "#9b59b6", "#c9a101ff", "#e89c59ff", "#ff7161ff", "#e5a8ffff", "#7dffe5ff", "#f31212ff", "#2764ffff", "#0e8e00ff"];
   return colors[level] || null;
 }
 
