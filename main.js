@@ -52,11 +52,42 @@ function moveLoadButtonToBottom() {
 
 async function loadEnemiesForRound() {
   let numEnemies = 1;
-  if (round === 3) numEnemies = 2;
-  if (round >= 4) numEnemies = 3;
+  let hpRanges = [];
+
+  if (round === 1) {
+    numEnemies = 1;
+    hpRanges = [[2500, 5200]];
+  } else if (round === 2) {
+    numEnemies = 1;
+    hpRanges = [[7500, 10000]];
+  } else if (round === 3) {
+    numEnemies = 2;
+    hpRanges = [
+      [12000, 22000],
+      [7500, 15000]
+    ];
+  } else if (round >= 4) {
+    numEnemies = 3;
+    hpRanges = [
+      [20000, 30000],
+      [20000, 30000],
+      [30000, 50000]
+    ];
+  }
+
   const enemyRes = await fetch(`https://kl4hylidcs3k4fazx4aojk2wpe0fbksa.lambda-url.ap-northeast-1.on.aws/items/random?limit=${numEnemies}&genders=mens`);
   const enemyData = await enemyRes.json();
-  enemies = enemyData.map(mapStats);
+  enemies = enemyData.map((item, idx) => {
+    const enemy = mapStats(item, true);
+    // Set HP to the specified range for this enemy
+    if (hpRanges[idx]) {
+      const [minHp, maxHp] = hpRanges[idx];
+      const hp = Math.floor(Math.random() * (maxHp - minHp + 1)) + minHp;
+      enemy.hp = hp;
+      enemy.maxHp = hp;
+    }
+    return enemy;
+  });
 }
 
 function renderBattle() {
@@ -78,6 +109,12 @@ function renderBattle() {
         </span>
       </div>
     `;
+    // For party members
+    const hpPercent = Math.max(0, Math.round((p.hp / p.maxHp) * 100));
+    let hpColor = "#2ecc71"; // green
+    if (hpPercent < 25) hpColor = "#e74c3c"; // red
+    else if (hpPercent < 50) hpColor = "#f1c40f"; // yellow
+
     div.innerHTML = `
       <div style="display:flex;align-items:center;">
         <span style="font-size:10px;font-weight:bold;margin-right:6px;">Lv.${p.level || 1}</span>
@@ -91,7 +128,7 @@ function renderBattle() {
         </div>
       </div>
       <div class="hp-bar">
-        <div class="hp-fill" style="width:${Math.max(0, Math.round((p.hp/p.maxHp)*100))}%;"></div>
+        <div class="hp-fill" style="width:${hpPercent}%;background:${hpColor};"></div>
         <span class="hp-text">${p.hp}/${p.maxHp}</span>
       </div>
       ${expBarHtml}
