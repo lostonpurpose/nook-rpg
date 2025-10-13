@@ -65,13 +65,13 @@ async function loadEnemiesForRound() {
   if (round === 1) {
     numEnemies = 1;
     hpRanges = [[2500, 5200]];
-    atkRanges = [[12, 20]];
+    atkRanges = [[15, 23]];
     defRanges = [[6, 12]];
   } else if (round === 2) {
     numEnemies = 1;
     hpRanges = [[7500, 10000]];
-    atkRanges = [[18, 26]];
-    defRanges = [[14, 22]];
+    atkRanges = [[21, 28]];
+    defRanges = [[14, 18]];
   } else if (round === 3) {
     numEnemies = 2;
     hpRanges = [
@@ -80,11 +80,11 @@ async function loadEnemiesForRound() {
     ];
     atkRanges = [
       [22, 30],
-      [18, 26]
+      [25, 33]
     ];
     defRanges = [
-      [19, 25],
-      [16, 22]
+      [19, 22],
+      [15, 22]
     ];
   } else if (round >= 4) {
     numEnemies = 3;
@@ -95,13 +95,13 @@ async function loadEnemiesForRound() {
     ];
     atkRanges = [
       [30, 35],
-      [18, 26],
-      [17, 25]
+      [23, 26],
+      [26, 40]
     ];
     defRanges = [
       [19, 25],
       [16, 22],
-      [14, 20]
+      [18, 20]
     ];
   }
 
@@ -142,10 +142,10 @@ function renderBattle() {
     // EXP bar
     const expPercent = Math.min(100, Math.round((p.exp / (p.expToNext || 50)) * 100));
     const expBarHtml = `
-      <div class="exp-bar" style="height:11px;background:#fff;width:100%;border-radius:5px;margin:3px 0 0 0;position:relative;">
-        <div style="height:100%;background:#0ff;width:${expPercent}%;border-radius:5px;position:absolute;top:0;left:0;"></div>
-        <span class="exp-text" style="position:absolute;left:6px;font-size:8px;line-height:7px;color:#222;z-index:1;">
-          ${p.exp}/${p.expToNext}
+      <div class="exp-bar" style="height:11px;width:100%;border-radius:5px;margin:3px 0 0 0;position:relative;">
+        <div style="height:100%;width:${expPercent}%;position:absolute;top:0;left:0;"></div>
+        <span class="exp-text">
+          EXP ${p.exp}/${p.expToNext}
         </span>
       </div>
     `;
@@ -157,7 +157,6 @@ function renderBattle() {
 
     div.innerHTML = `
       <div style="display:flex;align-items:center;">
-        
         <h3 style="flex:1;text-align:left;">${p.displayName}</h3>
       </div>
       <div class="img-stats" style="display:flex;align-items:flex-start;">
@@ -170,7 +169,7 @@ function renderBattle() {
       </div>
       <div class="hp-bar">
         <div class="hp-fill" style="width:${hpPercent}%;background:${hpColor};"></div>
-        <span class="hp-text">${p.hp}/${p.maxHp}</span>
+        <span class="hp-text">HP ${Number.isFinite(p.hp) ? p.hp : 0}/${Number.isFinite(p.maxHp) ? p.maxHp : 0}</span>
       </div>
       ${expBarHtml}
       <button data-index="${index}" class="attack-btn" ${p.hasAttackedThisTurn || p.dead || gameOver ? "disabled" : ""}>Attack</button>
@@ -262,7 +261,7 @@ async function handleSingleAttack(index) {
 
         // Heal on attack
         if (attacker.chosenAbilities && attacker.chosenAbilities.includes('healOnAttack')) {
-          const heal = Math.round(attacker.maxHp * 0.05);
+          const heal = Math.round(attacker.maxHp * 0.04);
           attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
           appendLog(`${attacker.displayName} heals for ${heal} HP!`, "cyan");
         }
@@ -322,7 +321,7 @@ async function handleSingleAttack(index) {
 
   // Heal on attack
   if (attacker.chosenAbilities && attacker.chosenAbilities.includes('healOnAttack')) {
-    const heal = Math.round(attacker.maxHp * 0.05);
+    const heal = Math.round(attacker.maxHp * 0.04);
     attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
     appendLog(`${attacker.displayName} heals for ${heal} HP!`, "cyan");
   }
@@ -382,7 +381,7 @@ async function handleAllAttack() {
 
             // Heal on attack
             if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
-              const heal = Math.round(p.maxHp * 0.05);
+              const heal = Math.round(p.maxHp * 0.04);
               p.hp = Math.min(p.maxHp, p.hp + heal);
               appendLog(`${p.displayName} heals for ${heal} HP!`, "cyan");
             }
@@ -440,7 +439,7 @@ async function handleAllAttack() {
 
       // Heal on attack
       if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
-        const heal = Math.round(p.maxHp * 0.05);
+        const heal = Math.round(p.maxHp * 0.04);
         p.hp = Math.min(p.maxHp, p.hp + heal);
         appendLog(`${p.displayName} heals for ${heal} HP!`, "cyan");
       }
@@ -619,7 +618,7 @@ const ABILITY_OPTIONS = {
     { key: 'critUp', label: 'Crit chance increased by 5%' }
   ],
   4: [
-    { key: 'healOnAttack', label: 'Heal 5% of max HP on attack' }
+    { key: 'healOnAttack', label: 'Heal 4% of max HP on attack' }
   ],
   6: [
     { key: 'berserker', label: 'Berserker: double attack, half defense' }

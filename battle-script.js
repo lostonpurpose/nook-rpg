@@ -100,9 +100,22 @@ export function checkLevelUp(member) {
     member.exp -= member.expToNext;
     member.level = (member.level || 1) + 1;
     member.expToNext = Math.round(member.expToNext * 1.6);
+
+    // Ensure maxHp is a valid number before using it
+    if (!Number.isFinite(member.maxHp) || member.maxHp <= 0) member.maxHp = 100;
+
     // Increase stats by 15-20%
     member.maxHp = Math.round(member.maxHp * (1.15 + Math.random() * 0.05));
-    member.hp = Math.min(member.hp + Math.round(member.maxHp * 0.25), member.maxHp); // Heal 25% of new maxHp on level up
+
+    // Ensure hp is a valid number before using it
+    if (!Number.isFinite(member.hp) || member.hp < 0) member.hp = member.maxHp;
+
+    // Heal 20% of new maxHp on level up, but never above maxHp
+    member.hp = Math.min(
+      Math.round(member.hp + member.maxHp * 0.20),
+      member.maxHp
+    );
+
     member.attack = Math.round(member.attack * (1.15 + Math.random() * 0.05));
     member.defense = Math.round(member.defense * (1.15 + Math.random() * 0.05));
     leveledUp = true;
