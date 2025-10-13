@@ -237,7 +237,7 @@ async function handleSingleAttack(index) {
           attacker.exp += expGain;
           const leveledUp = checkLevelUp(attacker);
           if (leveledUp) {
-            showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
+            await showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
             await maybeShowAbilityChoice(attacker);
           }
         }
@@ -297,7 +297,7 @@ async function handleSingleAttack(index) {
     attacker.exp += expGain;
     const leveledUp = checkLevelUp(attacker);
     if (leveledUp) {
-      showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
+      await showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
       await maybeShowAbilityChoice(attacker);
     }
   }
@@ -357,7 +357,7 @@ async function handleAllAttack() {
               p.exp += expGain;
               const leveledUp = checkLevelUp(p);
               if (leveledUp) {
-                showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+                await showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
                 await maybeShowAbilityChoice(p);
               }
             }
@@ -415,7 +415,7 @@ async function handleAllAttack() {
         p.exp += expGain;
         const leveledUp = checkLevelUp(p);
         if (leveledUp) {
-          showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+          await showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
           await maybeShowAbilityChoice(p);
         }
       }
@@ -534,7 +534,12 @@ function showLevelUpModal(msg, level, colorOverride = null) {
   modal.innerText = msg;
   modal.style.display = 'block';
   modal.style.background = colorOverride || getLevelColor(level);
-  setTimeout(() => { modal.style.display = 'none'; }, 2000);
+  return new Promise(resolve => {
+    setTimeout(() => {
+      modal.style.display = 'none';
+      resolve();
+    }, 2000);
+  });
 }
 
 function getLevelColor(level) {
