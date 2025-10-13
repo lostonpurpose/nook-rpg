@@ -59,18 +59,32 @@ function moveLoadButtonToBottom() {
 async function loadEnemiesForRound() {
   let numEnemies = 1;
   let hpRanges = [];
+  let atkRanges = [];
+  let defRanges = [];
 
   if (round === 1) {
     numEnemies = 1;
     hpRanges = [[2500, 5200]];
+    atkRanges = [[12, 20]];
+    defRanges = [[6, 12]];
   } else if (round === 2) {
     numEnemies = 1;
     hpRanges = [[7500, 10000]];
+    atkRanges = [[18, 26]];
+    defRanges = [[14, 22]];
   } else if (round === 3) {
     numEnemies = 2;
     hpRanges = [
       [12000, 22000],
       [7500, 15000]
+    ];
+    atkRanges = [
+      [22, 30],
+      [18, 26]
+    ];
+    defRanges = [
+      [19, 25],
+      [16, 22]
     ];
   } else if (round >= 4) {
     numEnemies = 3;
@@ -78,6 +92,16 @@ async function loadEnemiesForRound() {
       [20000, 30000],
       [20000, 30000],
       [30000, 50000]
+    ];
+    atkRanges = [
+      [30, 35],
+      [18, 26],
+      [17, 25]
+    ];
+    defRanges = [
+      [19, 25],
+      [16, 22],
+      [14, 20]
     ];
   }
 
@@ -91,6 +115,16 @@ async function loadEnemiesForRound() {
       const hp = Math.floor(Math.random() * (maxHp - minHp + 1)) + minHp;
       enemy.hp = hp;
       enemy.maxHp = hp;
+    }
+    // Set ATK to the specified range for this enemy
+    if (atkRanges[idx]) {
+      const [minAtk, maxAtk] = atkRanges[idx];
+      enemy.attack = Math.floor(Math.random() * (maxAtk - minAtk + 1)) + minAtk;
+    }
+    // Set DEF to the specified range for this enemy
+    if (defRanges[idx]) {
+      const [minDef, maxDef] = defRanges[idx];
+      enemy.defense = Math.floor(Math.random() * (maxDef - minDef + 1)) + minDef;
     }
     return enemy;
   });
