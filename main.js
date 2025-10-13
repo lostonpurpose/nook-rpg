@@ -317,6 +317,60 @@ async function handleAllAttack() {
   for (let i = 0; i < party.length; i++) {
     const p = party[i];
     if (!p.hasAttackedThisTurn && p.hp > 0 && !p.dead) {
+      // --- Attack all enemies if ability ---
+      if (p.chosenAbilities && p.chosenAbilities.includes('attackAll')) {
+        for (let j = 0; j < enemies.length; j++) {
+          if (enemies[j].hp > 0) {
+            // Animate party member attack
+            const partyCard = document.querySelectorAll('.item-card')[i];
+            if (partyCard) partyCard.classList.add('attacking-party');
+            await delay(200);
+            if (partyCard) partyCard.classList.remove('attacking-party');
+
+            p.hasAttackedThisTurn = true;
+            const result = battleRound(p, enemies[j]);
+            appendLog(result.log, result.isCrit ? "orange" : "green");
+            if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
+
+            // Heal on attack
+            if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
+              const heal = Math.round(p.maxHp * 0.05);
+              p.hp = Math.min(p.maxHp, p.hp + heal);
+              appendLog(`${p.displayName} heals for ${heal} HP!`, "cyan");
+            }
+
+            if (result.hit && !p.dead) {
+              const expGain = Math.round(result.damage * 0.1);
+              p.exp += expGain;
+              const leveledUp = checkLevelUp(p);
+              if (leveledUp) {
+                showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+                await maybeShowAbilityChoice(p);
+              }
+            }
+
+            // Animate enemy hit flash
+            const enemyCard = document.querySelectorAll('.enemy-card')[j];
+            if (enemyCard) enemyCard.classList.add('flash-hit');
+            await delay(100);
+            if (enemyCard) enemyCard.classList.remove('flash-hit');
+
+            if (enemies[j].hp <= 0) enemies[j].dead = true;
+          }
+        }
+        if (p.hp <= 0) p.dead = true;
+        renderBattle();
+
+        anyAttack = true;
+        if (enemies.every(e => e.hp <= 0)) {
+          await handleVictory();
+          return;
+        }
+        await delay(700);
+        continue; // Go to next party member
+      }
+
+      // --- Normal single attack (existing code) ---
       // Pick a random alive enemy
       const aliveEnemies = enemies.map((e, idx) => ({ e, idx })).filter(obj => obj.e.hp > 0);
       if (aliveEnemies.length === 0) return;
@@ -330,10 +384,10 @@ async function handleAllAttack() {
       await delay(400);
       if (partyCard) partyCard.classList.remove('attacking-party');
 
-      // Apply damage and update state
       p.hasAttackedThisTurn = true;
       const result = battleRound(p, enemies[targetIdx]);
       appendLog(result.log, result.isCrit ? "orange" : "green");
+      if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
 
       // Heal on attack
       if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
