@@ -43,7 +43,9 @@ export function mapStats(item, isEnemy = false) {
 }
 
 export function battleRound(attacker, defender) {
-  const isCrit = Math.random() < 0.08;
+  let critBonus = 0;
+  if (attacker.chosenAbilities && attacker.chosenAbilities.includes('critUp')) critBonus += 0.05;
+  const isCrit = Math.random() < (0.08 + critBonus);
   const atk = Math.round(attacker.attack * (0.9 + Math.random() * 0.2));
   const def = Math.round(defender.defense * (0.9 + Math.random() * 0.2));
 

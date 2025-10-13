@@ -1,6 +1,11 @@
 // Expose a function for party-creation.js to start the game
 window.startBattleWithParty = function(newParty) {
-  party = newParty.map(p => ({ ...p, hasAttackedThisTurn: false }));
+  party = newParty.map(p => ({
+    ...p,
+    hasAttackedThisTurn: false,
+    abilities: [],
+    chosenAbilities: []
+  }));
   round = 1;
   gameOver = false;
   loadEnemiesForRound().then(() => {
@@ -162,11 +167,21 @@ async function handleSingleAttack(index) {
   const result = battleRound(party[index], enemies[targetIdx]);
   appendLog(result.log, "green");
 
+  // Heal on attack
+  if (party[index].chosenAbilities && party[index].chosenAbilities.includes('healOnAttack')) {
+    const heal = Math.round(party[index].maxHp * 0.05);
+    party[index].hp = Math.min(party[index].maxHp, party[index].hp + heal);
+    appendLog(`${party[index].displayName} heals for ${heal} HP!`, "cyan");
+  }
+
   if (result.hit && !party[index].dead) {
     const expGain = Math.round(result.damage * 0.1);
     party[index].exp += expGain;
     const leveledUp = checkLevelUp(party[index]);
-    if (leveledUp) showLevelUpModal(`${party[index].displayName} is now level ${party[index].level}!`, party[index].level);
+    if (leveledUp) {
+      showLevelUpModal(`${party[index].displayName} is now level ${party[index].level}!`, party[index].level);
+      await maybeShowAbilityChoice(party[index]);
+    }
   }
 
   // Animate enemy hit flash AFTER attack
@@ -214,11 +229,21 @@ async function handleAllAttack() {
       const result = battleRound(p, enemies[targetIdx]);
       appendLog(result.log, "green");
 
+      // Heal on attack
+      if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
+        const heal = Math.round(p.maxHp * 0.05);
+        p.hp = Math.min(p.maxHp, p.hp + heal);
+        appendLog(`${p.displayName} heals for ${heal} HP!`, "cyan");
+      }
+
       if (result.hit && !p.dead) {
         const expGain = Math.round(result.damage * 0.1);
         p.exp += expGain;
         const leveledUp = checkLevelUp(p);
-        if (leveledUp) showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+        if (leveledUp) {
+          showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+          await maybeShowAbilityChoice(p);
+        }
       }
 
       // Animate enemy hit flash AFTER attack
@@ -373,6 +398,78 @@ function showTryAgainButton() {
   document.body.appendChild(tryBtn);
 }
 
+const ABILITY_OPTIONS = {
+  3: [
+    { key: 'attackAll', label: 'Attack all enemies on attack' },
+    { key: 'critUp', label: 'Crit chance increased by 5%' }
+  ],
+  5: [
+    { key: 'healOnAttack', label: 'Heal 5% of max HP on attack' }
+  ],
+  7: [
+    { key: 'berserker', label: 'Berserker: double attack, half defense' }
+  ]
+};
+
+async function maybeShowAbilityChoice(char) {
+  const level = char.level;
+  let options = [];
+  if (level === 3) {
+    options = ABILITY_OPTIONS[3].filter(opt => !char.chosenAbilities.includes(opt.key));
+  } else if (level === 5) {
+    // At 5, offer the one not chosen at 3, plus heal
+    options = ABILITY_OPTIONS[3].filter(opt => !char.chosenAbilities.includes(opt.key))
+      .concat(ABILITY_OPTIONS[5]);
+  } else if (level === 7) {
+    // At 7, offer the only one not chosen at 3/5, plus berserker
+    const notChosen = ABILITY_OPTIONS[3].filter(opt => !char.chosenAbilities.includes(opt.key));
+    options = notChosen.concat(ABILITY_OPTIONS[7]);
+  }
+  if (options.length === 0) return;
+
+  // Show modal and wait for user choice
+  await showAbilityChoiceModal(char, options);
+}
+
+function showAbilityChoiceModal(char, options) {
+  return new Promise(resolve => {
+    let modal = document.getElementById('ability-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'ability-modal';
+      modal.style.position = 'fixed';
+      modal.style.top = '30%';
+      modal.style.left = '50%';
+      modal.style.transform = 'translate(-50%,-50%)';
+      modal.style.background = '#222';
+      modal.style.color = '#fff';
+      modal.style.padding = '24px 32px';
+      modal.style.borderRadius = '12px';
+      modal.style.fontSize = '16px';
+      modal.style.zIndex = 1001;
+      modal.style.textAlign = 'center';
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML = `<h3>Level Up Ability Choice for ${char.displayName}</h3>
+      <p>Choose one:</p>
+      ${options.map(opt => `<button class="ability-choice-btn" data-key="${opt.key}" style="margin:8px 0;display:block;width:100%">${opt.label}</button>`).join('')}
+    `;
+    modal.style.display = 'block';
+
+    document.querySelectorAll('.ability-choice-btn').forEach(btn => {
+      btn.onclick = () => {
+        const key = btn.dataset.key;
+        char.chosenAbilities.push(key);
+        if (key === 'berserker') {
+          char.attack = Math.round(char.attack * 2);
+          char.defense = Math.max(1, Math.round(char.defense / 2));
+        }
+        modal.style.display = 'none';
+        resolve();
+      };
+    });
+  });
+}
 
 // need death
 // need hp bar to decrease visually
