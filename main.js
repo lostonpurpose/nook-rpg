@@ -146,6 +146,11 @@ function renderBattle() {
   enemies.forEach((enemy, eIdx) => {
     const div = document.createElement("div");
     div.className = "enemy-card";
+    const hpPercent = Math.max(0, Math.round((enemy.hp / enemy.maxHp) * 100));
+    let hpColor = "#2ecc71";
+    if (hpPercent < 25) hpColor = "#e74c3c";
+    else if (hpPercent < 50) hpColor = "#f1c40f";
+
     div.innerHTML = `
       <h3>${enemy.displayName}</h3>
       <div class="img-stats" style="display:flex;align-items:flex-start;">
@@ -156,7 +161,7 @@ function renderBattle() {
         </div>
       </div>
       <div class="hp-bar">
-        <div class="hp-fill" style="width:${Math.max(0, Math.round((enemy.hp/enemy.maxHp)*100))}%;"></div>
+        <div class="hp-fill" style="width:${hpPercent}%;background:${hpColor};"></div>
         <span class="hp-text">${enemy.hp}/${enemy.maxHp}</span>
       </div>
     `;
