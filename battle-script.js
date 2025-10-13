@@ -1,9 +1,8 @@
-export function mapStats(item) {
+export function mapStats(item, isEnemy = false) {
   const hp = item.price;
   let attack = parseInt(item.size);
   if (isNaN(attack)) attack = 10;
-  attack = Math.round(attack * (1 + Math.random() * 0.5)); // 1.0x to 1.5x
-
+  attack = Math.round(attack * (1 + Math.random() * 0.5));
   let defense = 5;
   switch(item.category) {
     case "shoes": defense = 15; break;
@@ -11,24 +10,30 @@ export function mapStats(item) {
     case "bottoms": defense = 10; break;
     default: defense = 5;
   }
-  defense = Math.round(defense * (1 + Math.random() * 0.5)); // 1.0x to 1.5x
+  defense = Math.round(defense * (1 + Math.random() * 0.5));
+
+  // --- Enemy stat boost ---
+  let hpBoost = 1, atkBoost = 1, defBoost = 1;
+  if (isEnemy) {
+    // hpBoost = 1.25;   // 25% more HP
+    atkBoost = 1.25;  // 25% more ATK
+    defBoost = 1.2;   // 20% more DEF
+  }
 
   const displayName = item.brand_name || "Unknown";
-
-  // EXP thresholds by HP tier
   let expToNext;
-  if (hp < 2000) expToNext = 50;
-  else if (hp < 10000) expToNext = 80;
-  else if (hp < 30000) expToNext = 150;
-  else if (hp < 100000) expToNext = 270;
-  else expToNext = 400;
+  if (hp < 2000) expToNext = 70;
+  else if (hp < 10000) expToNext = 100;
+  else if (hp < 30000) expToNext = 190;
+  else if (hp < 100000) expToNext = 330;
+  else expToNext = 450;
 
   return { 
     ...item, 
-    hp, 
-    maxHp: hp, 
-    attack, 
-    defense, 
+    hp: Math.round(hp * hpBoost), 
+    maxHp: Math.round(hp * hpBoost), 
+    attack: Math.round(attack * atkBoost), 
+    defense: Math.round(defense * defBoost), 
     exp: 0, 
     level: 1,
     expToNext,
@@ -83,11 +88,11 @@ export function checkLevelUp(member) {
   let leveledUp = false;
   // Recalculate expToNext for level 2 based on maxHp
   if (!member.expToNext) {
-    if (member.maxHp < 2000) member.expToNext = 50;
-    else if (member.maxHp < 10000) member.expToNext = 80;
-    else if (member.maxHp < 30000) member.expToNext = 150;
-    else if (member.maxHp < 100000) member.expToNext = 270;
-    else member.expToNext = 400;
+    if (member.maxHp < 2000) member.expToNext = 70;
+    else if (member.maxHp < 10000) member.expToNext = 100;
+    else if (member.maxHp < 30000) member.expToNext = 190;
+    else if (member.maxHp < 100000) member.expToNext = 330;
+    else member.expToNext = 450;
   }
   while (member.exp >= member.expToNext) {
     member.exp -= member.expToNext;
