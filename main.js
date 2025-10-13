@@ -8,12 +8,14 @@ window.startBattleWithParty = function(newParty) {
   const battleLog = document.getElementById("battle-log");
   if (battleLog) battleLog.style.display = "";
 
+  console.log("newParty before mapping:", newParty);
   party = newParty.map(p => ({
-    ...p,
+    ...mapStats(p),
     hasAttackedThisTurn: false,
     abilities: [],
     chosenAbilities: []
   }));
+  console.log("party after mapping:", party);
   round = 1;
   gameOver = false;
   loadEnemiesForRound().then(() => {
@@ -145,7 +147,7 @@ function renderBattle() {
       <div class="exp-bar" style="height:11px;width:100%;border-radius:5px;margin:3px 0 0 0;position:relative;">
         <div style="height:100%;width:${expPercent}%;position:absolute;top:0;left:0;"></div>
         <span class="exp-text">
-          EXP ${p.exp}/${p.expToNext}
+          ${p.exp}/${p.expToNext}
         </span>
       </div>
     `;
@@ -169,7 +171,7 @@ function renderBattle() {
       </div>
       <div class="hp-bar">
         <div class="hp-fill" style="width:${hpPercent}%;background:${hpColor};"></div>
-        <span class="hp-text">HP ${Number.isFinite(p.hp) ? p.hp : 0}/${Number.isFinite(p.maxHp) ? p.maxHp : 0}</span>
+        <span class="hp-text">${Number.isFinite(p.hp) ? p.hp : 0}/${Number.isFinite(p.maxHp) ? p.maxHp : 0}</span>
       </div>
       ${expBarHtml}
       <button data-index="${index}" class="attack-btn" ${p.hasAttackedThisTurn || p.dead || gameOver ? "disabled" : ""}>Attack</button>
