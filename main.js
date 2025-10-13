@@ -505,14 +505,14 @@ function showTryAgainButton() {
 }
 
 const ABILITY_OPTIONS = {
-  3: [
+  2: [
     { key: 'attackAll', label: 'Attack all enemies on attack' },
     { key: 'critUp', label: 'Crit chance increased by 5%' }
   ],
-  5: [
+  4: [
     { key: 'healOnAttack', label: 'Heal 5% of max HP on attack' }
   ],
-  7: [
+  6: [
     { key: 'berserker', label: 'Berserker: double attack, half defense' }
   ]
 };
@@ -520,16 +520,16 @@ const ABILITY_OPTIONS = {
 async function maybeShowAbilityChoice(char) {
   const level = char.level;
   let options = [];
-  if (level === 3) {
-    options = ABILITY_OPTIONS[3].filter(opt => !char.chosenAbilities.includes(opt.key));
-  } else if (level === 5) {
-    // At 5, offer the one not chosen at 3, plus heal
-    options = ABILITY_OPTIONS[3].filter(opt => !char.chosenAbilities.includes(opt.key))
-      .concat(ABILITY_OPTIONS[5]);
-  } else if (level === 7) {
-    // At 7, offer the only one not chosen at 3/5, plus berserker
-    const notChosen = ABILITY_OPTIONS[3].filter(opt => !char.chosenAbilities.includes(opt.key));
-    options = notChosen.concat(ABILITY_OPTIONS[7]);
+  if (level === 2) {
+    options = ABILITY_OPTIONS[2].filter(opt => !char.chosenAbilities.includes(opt.key));
+  } else if (level === 4) {
+    // At 4, offer the one not chosen at 2, plus heal
+    options = ABILITY_OPTIONS[2].filter(opt => !char.chosenAbilities.includes(opt.key))
+      .concat(ABILITY_OPTIONS[4]);
+  } else if (level === 6) {
+    // At 7, offer the only one not chosen at 2/4, plus berserker
+    const notChosen = ABILITY_OPTIONS[2].filter(opt => !char.chosenAbilities.includes(opt.key));
+    options = notChosen.concat(ABILITY_OPTIONS[6]);
   }
   if (options.length === 0) return;
 
