@@ -1,26 +1,16 @@
 export function mapStats(item, isEnemy = false) {
-  const hp = item.price;
-  let attack = parseInt(item.size);
-  if (isNaN(attack)) attack = 10;
-  attack = Math.round(attack * (1 + Math.random() * 0.5));
-  let defense = 5;
-  switch(item.category) {
-    case "shoes": defense = 15; break;
-    case "tops": defense = 8; break;
-    case "bottoms": defense = 10; break;
-    default: defense = 5;
-  }
-  defense = Math.round(defense * (1 + Math.random() * 0.5));
+  // Always parse price as a number and fallback to 100 if invalid
+  const hpRaw = Number(item.price);
+  const hp = Number.isFinite(hpRaw) && hpRaw > 0 ? hpRaw : 100;
 
-  // --- Enemy stat boost ---
-  let hpBoost = 1, atkBoost = 1, defBoost = 1;
-  if (isEnemy) {
-    // hpBoost = 1.25;   // 25% more HP
-    atkBoost = 1.25;  // 25% more ATK
-    defBoost = 1.2;   // 20% more DEF
-  }
+  let attack = Number(item.attack) || 10;
+  let defense = Number(item.defense) || 10;
 
-  const displayName = item.brand_name || "Unknown";
+  let hpBoost = isEnemy ? 1.2 : 1;
+  let atkBoost = isEnemy ? 1.2 : 1;
+  let defBoost = isEnemy ? 1.2 : 1;
+
+  const displayName = item.brand_name || item.title || "Unknown";
   let expToNext;
   if (hp < 2000) expToNext = 70;
   else if (hp < 10000) expToNext = 100;
@@ -28,13 +18,13 @@ export function mapStats(item, isEnemy = false) {
   else if (hp < 100000) expToNext = 330;
   else expToNext = 450;
 
-  return { 
-    ...item, 
-    hp: Math.round(hp * hpBoost), 
-    maxHp: Math.round(hp * hpBoost), 
-    attack: Math.round(attack * atkBoost), 
-    defense: Math.round(defense * defBoost), 
-    exp: 0, 
+  return {
+    ...item,
+    hp: Math.round(hp * hpBoost),
+    maxHp: Math.round(hp * hpBoost),
+    attack: Math.round(attack * atkBoost),
+    defense: Math.round(defense * defBoost),
+    exp: 0,
     level: 1,
     expToNext,
     dead: false,
@@ -100,9 +90,22 @@ export function checkLevelUp(member) {
     member.exp -= member.expToNext;
     member.level = (member.level || 1) + 1;
     member.expToNext = Math.round(member.expToNext * 1.6);
+
+    // Ensure maxHp is a valid number before using it
+    if (!Number.isFinite(member.maxHp) || member.maxHp <= 0) member.maxHp = 100;
+
     // Increase stats by 15-20%
     member.maxHp = Math.round(member.maxHp * (1.15 + Math.random() * 0.05));
-    member.hp = Math.min(member.hp + Math.round(member.maxHp * 0.25), member.maxHp); // Heal 25% of new maxHp on level up
+
+    // Ensure hp is a valid number before using it
+    if (!Number.isFinite(member.hp) || member.hp < 0) member.hp = member.maxHp;
+
+    // Heal 20% of new maxHp on level up, but never above maxHp
+    member.hp = Math.min(
+      Math.round(member.hp + member.maxHp * 0.20),
+      member.maxHp
+    );
+
     member.attack = Math.round(member.attack * (1.15 + Math.random() * 0.05));
     member.defense = Math.round(member.defense * (1.15 + Math.random() * 0.05));
     leveledUp = true;

@@ -4,12 +4,18 @@ window.startBattleWithParty = function(newParty) {
   const createBtn = document.getElementById('load');
   if (createBtn) createBtn.style.display = "none";
 
+  // Show the battle log only when battle starts
+  const battleLog = document.getElementById("battle-log");
+  if (battleLog) battleLog.style.display = "";
+
+  console.log("newParty before mapping:", newParty);
   party = newParty.map(p => ({
-    ...p,
+    ...mapStats(p),
     hasAttackedThisTurn: false,
     abilities: [],
     chosenAbilities: []
   }));
+  console.log("party after mapping:", party);
   round = 1;
   gameOver = false;
   loadEnemiesForRound().then(() => {
@@ -28,6 +34,7 @@ let allAttackUsed = false;
 const loadBtn = document.getElementById("load");
 const battleContainer = document.getElementById("battle-container");
 const battleLog = document.getElementById("battle-log");
+// if (battleLog) battleLog.style.display = "";
 
 // Move load button below battle log after first use
 function moveLoadButtonToBottom() {
@@ -54,18 +61,32 @@ function moveLoadButtonToBottom() {
 async function loadEnemiesForRound() {
   let numEnemies = 1;
   let hpRanges = [];
+  let atkRanges = [];
+  let defRanges = [];
 
   if (round === 1) {
     numEnemies = 1;
     hpRanges = [[2500, 5200]];
+    atkRanges = [[15, 23]];
+    defRanges = [[6, 12]];
   } else if (round === 2) {
     numEnemies = 1;
     hpRanges = [[7500, 10000]];
+    atkRanges = [[21, 28]];
+    defRanges = [[14, 18]];
   } else if (round === 3) {
     numEnemies = 2;
     hpRanges = [
       [12000, 22000],
       [7500, 15000]
+    ];
+    atkRanges = [
+      [22, 30],
+      [25, 33]
+    ];
+    defRanges = [
+      [19, 22],
+      [15, 22]
     ];
   } else if (round >= 4) {
     numEnemies = 3;
@@ -73,6 +94,16 @@ async function loadEnemiesForRound() {
       [20000, 30000],
       [20000, 30000],
       [30000, 50000]
+    ];
+    atkRanges = [
+      [30, 35],
+      [23, 26],
+      [26, 40]
+    ];
+    defRanges = [
+      [19, 25],
+      [16, 22],
+      [18, 20]
     ];
   }
 
@@ -86,6 +117,16 @@ async function loadEnemiesForRound() {
       const hp = Math.floor(Math.random() * (maxHp - minHp + 1)) + minHp;
       enemy.hp = hp;
       enemy.maxHp = hp;
+    }
+    // Set ATK to the specified range for this enemy
+    if (atkRanges[idx]) {
+      const [minAtk, maxAtk] = atkRanges[idx];
+      enemy.attack = Math.floor(Math.random() * (maxAtk - minAtk + 1)) + minAtk;
+    }
+    // Set DEF to the specified range for this enemy
+    if (defRanges[idx]) {
+      const [minDef, maxDef] = defRanges[idx];
+      enemy.defense = Math.floor(Math.random() * (maxDef - minDef + 1)) + minDef;
     }
     return enemy;
   });
@@ -103,9 +144,9 @@ function renderBattle() {
     // EXP bar
     const expPercent = Math.min(100, Math.round((p.exp / (p.expToNext || 50)) * 100));
     const expBarHtml = `
-      <div class="exp-bar" style="height:7px;background:#fff;width:100%;border-radius:4px;margin:3px 0 0 0;position:relative;">
-        <div style="height:100%;background:#0ff;width:${expPercent}%;border-radius:4px;position:absolute;top:0;left:0;"></div>
-        <span class="exp-text" style="position:absolute;left:6px;top:0;font-size:8px;line-height:7px;color:#222;z-index:1;">
+      <div class="exp-bar" style="height:11px;width:100%;border-radius:5px;margin:3px 0 0 0;position:relative;">
+        <div style="height:100%;width:${expPercent}%;position:absolute;top:0;left:0;"></div>
+        <span class="exp-text">
           ${p.exp}/${p.expToNext}
         </span>
       </div>
@@ -118,19 +159,19 @@ function renderBattle() {
 
     div.innerHTML = `
       <div style="display:flex;align-items:center;">
-        <span style="font-size:10px;font-weight:bold;margin-right:6px;">Lv.${p.level || 1}</span>
         <h3 style="flex:1;text-align:left;">${p.displayName}</h3>
       </div>
       <div class="img-stats" style="display:flex;align-items:flex-start;">
         <img src="${p.image_url}" alt="${p.title}" width="120" height="50">
         <div class="stats-column" style="display:flex;flex-direction:column;justify-content:center;margin-left:8px;">
-          <p class="stat-text">ATK: ${p.attack}</p>
-          <p class="stat-text">DEF: ${p.defense}</p>
+          <p class="stat-text">Lv.${p.level || 1}</p>
+          <p class="stat-text">ATK:${p.attack}</p>
+          <p class="stat-text">DEF:${p.defense}</p>
         </div>
       </div>
       <div class="hp-bar">
         <div class="hp-fill" style="width:${hpPercent}%;background:${hpColor};"></div>
-        <span class="hp-text">${p.hp}/${p.maxHp}</span>
+        <span class="hp-text">${Number.isFinite(p.hp) ? p.hp : 0}/${Number.isFinite(p.maxHp) ? p.maxHp : 0}</span>
       </div>
       ${expBarHtml}
       <button data-index="${index}" class="attack-btn" ${p.hasAttackedThisTurn || p.dead || gameOver ? "disabled" : ""}>Attack</button>
@@ -222,7 +263,7 @@ async function handleSingleAttack(index) {
 
         // Heal on attack
         if (attacker.chosenAbilities && attacker.chosenAbilities.includes('healOnAttack')) {
-          const heal = Math.round(attacker.maxHp * 0.05);
+          const heal = Math.round(attacker.maxHp * 0.04);
           attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
           appendLog(`${attacker.displayName} heals for ${heal} HP!`, "cyan");
         }
@@ -232,7 +273,7 @@ async function handleSingleAttack(index) {
           attacker.exp += expGain;
           const leveledUp = checkLevelUp(attacker);
           if (leveledUp) {
-            showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
+            await showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
             await maybeShowAbilityChoice(attacker);
           }
         }
@@ -282,7 +323,7 @@ async function handleSingleAttack(index) {
 
   // Heal on attack
   if (attacker.chosenAbilities && attacker.chosenAbilities.includes('healOnAttack')) {
-    const heal = Math.round(attacker.maxHp * 0.05);
+    const heal = Math.round(attacker.maxHp * 0.04);
     attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
     appendLog(`${attacker.displayName} heals for ${heal} HP!`, "cyan");
   }
@@ -292,7 +333,7 @@ async function handleSingleAttack(index) {
     attacker.exp += expGain;
     const leveledUp = checkLevelUp(attacker);
     if (leveledUp) {
-      showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
+      await showLevelUpModal(`${attacker.displayName} is now level ${attacker.level}!`, attacker.level);
       await maybeShowAbilityChoice(attacker);
     }
   }
@@ -342,7 +383,7 @@ async function handleAllAttack() {
 
             // Heal on attack
             if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
-              const heal = Math.round(p.maxHp * 0.05);
+              const heal = Math.round(p.maxHp * 0.04);
               p.hp = Math.min(p.maxHp, p.hp + heal);
               appendLog(`${p.displayName} heals for ${heal} HP!`, "cyan");
             }
@@ -352,7 +393,7 @@ async function handleAllAttack() {
               p.exp += expGain;
               const leveledUp = checkLevelUp(p);
               if (leveledUp) {
-                showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+                await showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
                 await maybeShowAbilityChoice(p);
               }
             }
@@ -400,7 +441,7 @@ async function handleAllAttack() {
 
       // Heal on attack
       if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
-        const heal = Math.round(p.maxHp * 0.05);
+        const heal = Math.round(p.maxHp * 0.04);
         p.hp = Math.min(p.maxHp, p.hp + heal);
         appendLog(`${p.displayName} heals for ${heal} HP!`, "cyan");
       }
@@ -410,7 +451,7 @@ async function handleAllAttack() {
         p.exp += expGain;
         const leveledUp = checkLevelUp(p);
         if (leveledUp) {
-          showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
+          await showLevelUpModal(`${p.displayName} is now level ${p.level}!`, p.level);
           await maybeShowAbilityChoice(p);
         }
       }
@@ -504,7 +545,9 @@ async function handleVictory() {
   appendLog("All enemies defeated!", "cyan");
   await delay(1000);
   await loadEnemiesForRound();
-  appendLog(`${enemies.map(e => e.displayName).join(", ")} entered the fight!`, "cyan");
+  const enterMsg = `${enemies.map(e => e.displayName).join(", ")} entered the fight!`;
+  appendLog(enterMsg, "cyan");
+  showLevelUpModal(enterMsg, 0, "#00ffff"); // Cyan background
   startPlayerTurn();
 }
 
@@ -522,12 +565,17 @@ function appendLog(text, color = null) {
   logDiv.scrollTop = logDiv.scrollHeight;
 }
 
-function showLevelUpModal(msg, level) {
+function showLevelUpModal(msg, level, colorOverride = null) {
   const modal = document.getElementById('levelup-modal');
   modal.innerText = msg;
   modal.style.display = 'block';
-  modal.style.background = getLevelColor(level);
-  setTimeout(() => { modal.style.display = 'none'; }, 2000);
+  modal.style.background = colorOverride || getLevelColor(level);
+  return new Promise(resolve => {
+    setTimeout(() => {
+      modal.style.display = 'none';
+      resolve();
+    }, 2000);
+  });
 }
 
 function getLevelColor(level) {
@@ -572,7 +620,7 @@ const ABILITY_OPTIONS = {
     { key: 'critUp', label: 'Crit chance increased by 5%' }
   ],
   4: [
-    { key: 'healOnAttack', label: 'Heal 5% of max HP on attack' }
+    { key: 'healOnAttack', label: 'Heal 4% of max HP on attack' }
   ],
   6: [
     { key: 'berserker', label: 'Berserker: double attack, half defense' }
