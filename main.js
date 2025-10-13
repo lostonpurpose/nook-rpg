@@ -23,6 +23,7 @@ let party = [];
 let enemies = [];
 let round = 1; // 1: 1 enemy, 2: 1 enemy, 3: 2 enemies, 4: 3 enemies, 5: win
 let gameOver = false;
+let allAttackUsed = false;
 
 const loadBtn = document.getElementById("load");
 const battleContainer = document.getElementById("battle-container");
@@ -176,21 +177,27 @@ function renderBattle() {
   let allBtn = document.getElementById("all-attack");
   if (allBtn) allBtn.remove();
   allBtn = document.createElement("button");
-
-
   allBtn.id = "all-attack";
   allBtn.innerText = "All Attack";
-  allBtn.style.margin = "20px auto 0 auto";
-  allBtn.style.display = "block";
-  // Correctly determine if all should be disabled
-  const allAttacked = party.filter(p => !p.dead && p.hp > 0).every(p => p.hasAttackedThisTurn);
-  allBtn.disabled = gameOver || allAttacked;
-  allBtn.addEventListener("click", async () => await handleAllAttack());
+  allBtn.disabled = allAttackUsed || gameOver;
+  allBtn.style.opacity = allBtn.disabled ? "0.5" : "1";
+  allBtn.addEventListener("click", async () => {
+    allBtn.disabled = true;
+    allBtn.style.opacity = "0.5";
+    allAttackUsed = true;
+    await handleAllAttack();
+  });
   document.body.insertBefore(allBtn, battleLog);
 
   document.querySelectorAll(".attack-btn").forEach(btn => {
     btn.addEventListener("click", async () => await handleSingleAttack(parseInt(btn.dataset.index)));
   });
+}
+
+function startPlayerTurn() {
+  allAttackUsed = false;
+  party.forEach(p => p.hasAttackedThisTurn = false); // <-- Add this line
+  renderBattle();
 }
 
 async function handleSingleAttack(index) {
@@ -319,15 +326,16 @@ async function handleAllAttack() {
     if (!p.hasAttackedThisTurn && p.hp > 0 && !p.dead) {
       // --- Attack all enemies if ability ---
       if (p.chosenAbilities && p.chosenAbilities.includes('attackAll')) {
+        let attacked = false;
         for (let j = 0; j < enemies.length; j++) {
           if (enemies[j].hp > 0) {
+            attacked = true;
             // Animate party member attack
             const partyCard = document.querySelectorAll('.item-card')[i];
             if (partyCard) partyCard.classList.add('attacking-party');
             await delay(200);
             if (partyCard) partyCard.classList.remove('attacking-party');
 
-            p.hasAttackedThisTurn = true;
             const result = battleRound(p, enemies[j]);
             appendLog(result.log, result.isCrit ? "orange" : "green");
             if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
@@ -358,10 +366,13 @@ async function handleAllAttack() {
             if (enemies[j].hp <= 0) enemies[j].dead = true;
           }
         }
+        if (attacked) {
+          p.hasAttackedThisTurn = true;
+          anyAttack = true;
+        }
         if (p.hp <= 0) p.dead = true;
         renderBattle();
 
-        anyAttack = true;
         if (enemies.every(e => e.hp <= 0)) {
           await handleVictory();
           return;
@@ -371,12 +382,11 @@ async function handleAllAttack() {
       }
 
       // --- Normal single attack (existing code) ---
-      // Pick a random alive enemy
       const aliveEnemies = enemies.map((e, idx) => ({ e, idx })).filter(obj => obj.e.hp > 0);
-      if (aliveEnemies.length === 0) return;
+      if (aliveEnemies.length === 0) continue;
       const targetObj = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
       const targetIdx = targetObj.idx;
-      if (targetIdx === -1) break;
+      if (targetIdx === -1) continue;
 
       // Animate party member attack
       const partyCard = document.querySelectorAll('.item-card')[i];
@@ -384,7 +394,6 @@ async function handleAllAttack() {
       await delay(400);
       if (partyCard) partyCard.classList.remove('attacking-party');
 
-      p.hasAttackedThisTurn = true;
       const result = battleRound(p, enemies[targetIdx]);
       appendLog(result.log, result.isCrit ? "orange" : "green");
       if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
@@ -415,6 +424,7 @@ async function handleAllAttack() {
       if (enemies[targetIdx].hp <= 0) enemies[targetIdx].dead = true;
       if (p.hp <= 0) p.dead = true;
 
+      p.hasAttackedThisTurn = true;
       renderBattle();
 
       anyAttack = true;
@@ -476,8 +486,7 @@ async function enemyAttack() {
     return;
   }
 
-  resetTurn();
-  renderBattle();
+  startPlayerTurn();
 }
 
 function resetTurn() {
@@ -496,8 +505,7 @@ async function handleVictory() {
   await delay(1000);
   await loadEnemiesForRound();
   appendLog(`${enemies.map(e => e.displayName).join(", ")} entered the fight!`, "cyan");
-  party.forEach(p => p.hasAttackedThisTurn = false);
-  renderBattle();
+  startPlayerTurn();
 }
 
 function delay(ms) {
