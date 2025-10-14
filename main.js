@@ -25,6 +25,13 @@ window.startBattleWithParty = function(newParty) {
 };
 import { mapStats, battleRound, checkLevelUp } from './battle-script.js';
 
+const battleBackgrounds = [
+  'img/lv1.png',
+  'img/lv2.png',
+  'img/lv3.png',
+  'img/lv4.png'
+];
+
 let party = [];
 let enemies = [];
 let round = 1; // 1: 1 enemy, 2: 1 enemy, 3: 2 enemies, 4: 3 enemies, 5: win
@@ -130,6 +137,11 @@ async function loadEnemiesForRound() {
     }
     return enemy;
   });
+  // Set background based on round (1-based)
+  const bgIdx = Math.min(round - 1, battleBackgrounds.length - 1);
+  document.body.style.backgroundImage = `url('${battleBackgrounds[bgIdx]}')`;
+  document.body.style.backgroundSize = 'cover';
+  document.body.style.backgroundPosition = 'center';
 }
 
 function renderBattle() {
@@ -580,7 +592,7 @@ function showLevelUpModal(msg, level, colorOverride = null) {
 
 function getLevelColor(level) {
   // Level 1: default (no override), Level 2+: colored
-  const colors = [null, null, "#3498db", "#2ecc71", "#9b59b6", "#c9a101ff", "#e89c59ff", "#ff7161ff", "#e5a8ffff", "#7dffe5ff", "#f31212ff", "#2764ffff", "#0e8e00ff"];
+  const colors = [null, null, "#3498db", "#2ecc71", "#9b59b6", "#c9a101ff", "#e85959ff", "#6da185ff", "#e5a8ffff", "#7dffe5ff", "#f31212ff", "#2764ffff", "#0e8e00ff"];
   return colors[level] || null;
 }
 

@@ -6,9 +6,9 @@ export function mapStats(item, isEnemy = false) {
   let attack = Number(item.attack) || 10;
   let defense = Number(item.defense) || 10;
 
-  let hpBoost = isEnemy ? 1.2 : 1;
-  let atkBoost = isEnemy ? 1.2 : 1;
-  let defBoost = isEnemy ? 1.2 : 1;
+  let hpBoost = isEnemy ? 1.0 : 1;
+  let atkBoost = isEnemy ? 1.4 : 1;
+  let defBoost = isEnemy ? 1.4 : 1;
 
   const displayName = item.brand_name || item.title || "Unknown";
   let expToNext;
@@ -55,7 +55,7 @@ export function battleRound(attacker, defender) {
   if (Math.random() < hitChance) {
     // Randomize HP percent between 0.05 and 0.11
     const hpPercent = 0.05 + Math.random() * 0.06; // 0.05 to 0.11
-    let baseDamage = atk * 7 + defender.hp * hpPercent;
+    let baseDamage = atk * 10 + defender.hp * hpPercent;
     // Optionally, keep a small random variation (e.g., ±15%)
     let damage;
     if (isCrit) {
