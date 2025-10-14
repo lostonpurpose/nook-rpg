@@ -21,11 +21,11 @@ async function fetchBrands() {
 
 function renderPartyForm() {
   partyCreationDiv.innerHTML = `
-    <h2>Create Your Party</h2>
+    <h2 class="choose-brand">Create Your Party</h2>
     <div id="char-form">
-      <h3>Character No. ${currentChar + 1}</h3>
+      <h3 class="char-num">Character No. ${currentChar + 1}</h3>
       <div>
-        <label for="brand-select">Choose a Brand:</label>
+        <label for="brand-select" class="choose-brand">Choose a Brand for your party member:</label>
         <select id="brand-select">
           <option value="">(Random Brand)</option>
           ${brands.map(b => `<option value="${b.id}" ${selectedBrand === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}
@@ -35,7 +35,7 @@ function renderPartyForm() {
       <button id="get-random">Get Random Character</button>
     </div>
     <div id="party-preview">
-      <h4>Party Preview:</h4>
+      <h4 class="party-preview">Party Preview</h4>
       <ul>
         ${party.map((m, i) => `<li>Character ${i+1}: ${m.displayName}</li>`).join('')}
       </ul>
