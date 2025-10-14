@@ -147,7 +147,7 @@ function renderBattle() {
       <div class="exp-bar" style="height:11px;width:100%;border-radius:5px;margin:3px 0 0 0;position:relative;">
         <div style="height:100%;width:${expPercent}%;position:absolute;top:0;left:0;"></div>
         <span class="exp-text">
-          ${p.exp}/${p.expToNext}
+          XP ${p.exp}/${p.expToNext}
         </span>
       </div>
     `;
@@ -171,7 +171,7 @@ function renderBattle() {
       </div>
       <div class="hp-bar">
         <div class="hp-fill" style="width:${hpPercent}%;background:${hpColor};"></div>
-        <span class="hp-text">${Number.isFinite(p.hp) ? p.hp : 0}/${Number.isFinite(p.maxHp) ? p.maxHp : 0}</span>
+        <span class="hp-text">¥${Number.isFinite(p.hp) ? p.hp : 0}/${Number.isFinite(p.maxHp) ? p.maxHp : 0}</span>
       </div>
       ${expBarHtml}
       <button data-index="${index}" class="attack-btn" ${p.hasAttackedThisTurn || p.dead || gameOver ? "disabled" : ""}>Attack</button>
@@ -666,7 +666,7 @@ function showAbilityChoiceModal(char, options) {
       modal.style.textAlign = 'center';
       document.body.appendChild(modal);
     }
-    modal.innerHTML = `<h3>Level Up Ability Choice for ${char.displayName}</h3>
+    modal.innerHTML = `<h3>Choose new ability for ${char.displayName}</h3>
       <p>Choose one:</p>
       ${options.map(opt => `<button class="ability-choice-btn" data-key="${opt.key}" style="margin:8px 0;display:block;width:100%">${opt.label}</button>`).join('')}
     `;
