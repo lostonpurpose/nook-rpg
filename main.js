@@ -628,7 +628,7 @@ function showTryAgainButton() {
 
 const ABILITY_OPTIONS = {
   2: [
-    { key: 'attackAll', label: 'Attack all enemies on attack' },
+    { key: 'attackAll', label: 'Attack all enemies when attacking' },
     { key: 'critUp', label: 'Crit chance increased by 5%' }
   ],
   4: [
@@ -645,13 +645,13 @@ async function maybeShowAbilityChoice(char) {
   if (level === 2) {
     options = ABILITY_OPTIONS[2].filter(opt => !char.chosenAbilities.includes(opt.key));
   } else if (level === 4) {
-    // At 4, offer the one not chosen at 2, plus heal
     options = ABILITY_OPTIONS[2].filter(opt => !char.chosenAbilities.includes(opt.key))
       .concat(ABILITY_OPTIONS[4]);
   } else if (level === 6) {
-    // At 7, offer the only one not chosen at 2/4, plus berserker
-    const notChosen = ABILITY_OPTIONS[2].filter(opt => !char.chosenAbilities.includes(opt.key));
-    options = notChosen.concat(ABILITY_OPTIONS[6]);
+    // At level 6, offer berserker and the one ability from level 2 or 4 not yet chosen
+    const allPrior = ABILITY_OPTIONS[2].concat(ABILITY_OPTIONS[4]);
+    const notChosen = allPrior.filter(opt => !char.chosenAbilities.includes(opt.key));
+    options = [notChosen[0], ABILITY_OPTIONS[6][0]];
   }
   if (options.length === 0) return;
 
