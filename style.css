@@ -1,3 +1,8 @@
+html, body {
+  height: 100%;
+  min-height: 100%;
+}
+
 body {
   font-family: 'Press Start 2P', cursive;
   font-size: 8px;
@@ -5,6 +10,9 @@ body {
   color: #fff;
   text-align: center;
   padding: 10px;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 h2.choose-brand {
@@ -190,7 +198,7 @@ button:disabled {
 
 .exp-bar {
   height: 11px;
-  background: #414141;
+  background: linear-gradient(to right, rgb(93, 93, 93), rgb(216, 216, 216));
   width: 100%;
   border-radius: 5px;
   border: 1px solid #555;

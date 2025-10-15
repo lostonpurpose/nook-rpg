@@ -69,7 +69,7 @@ export function battleRound(attacker, defender) {
     defender.hp -= damage;
     if (defender.hp < 0) defender.hp = 0;
     let result = `${attacker.displayName} hits ${defender.displayName} for ${damage} damage!`;
-    if (isCrit) result += " Critical hit!";
+    if (isCrit) result += " CRITICAL HIT!";
     return { log: result, damage, hit: true, isCrit };
   } else {
     return { log: `${attacker.displayName} missed!`, damage: 0, hit: false, isCrit: false };

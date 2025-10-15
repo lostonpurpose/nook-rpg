@@ -1,5 +1,5 @@
 // Expose a function for party-creation.js to start the game
-window.startBattleWithParty = function(newParty) {
+window.startBattleWithParty = async function(newParty) {
   // Hide the create party button
   const createBtn = document.getElementById('load');
   if (createBtn) createBtn.style.display = "none";
@@ -18,12 +18,31 @@ window.startBattleWithParty = function(newParty) {
   console.log("party after mapping:", party);
   round = 1;
   gameOver = false;
-  loadEnemiesForRound().then(() => {
-    renderBattle();
-    // moveLoadButtonToBottom();
-  });
+
+  await loadEnemiesForRound();
+  await showBattleStartModal();
+  await renderBattle();
+  // moveLoadButtonToBottom();
 };
 import { mapStats, battleRound, checkLevelUp } from './battle-script.js';
+
+function showBattleStartModal() {
+  const modal = document.getElementById('levelup-modal');
+  const battleLog = document.getElementById('battle-log');
+  // Hide the battle log while modal is visible
+  if (battleLog) battleLog.style.display = "none";
+  modal.innerText = "Battle Start!";
+  modal.style.display = 'block';
+  modal.style.background = "#3498db"; // Or any color you want
+  return new Promise(resolve => {
+    setTimeout(() => {
+      modal.style.display = 'none';
+      // Show the battle log after modal disappears
+      if (battleLog) battleLog.style.display = "";
+      resolve();
+    }, 2000);
+  });
+}
 
 const battleBackgrounds = [
   'img/lv1.png',
@@ -218,6 +237,7 @@ function renderBattle() {
         <div class="hp-fill" style="width:${hpPercent}%;background:${hpColor};"></div>
         <span class="hp-text">${enemy.hp}/${enemy.maxHp}</span>
       </div>
+      <div class="enemy-text" style="color:red;margin-top:6px">Enemy</div>
     `;
     if (enemy.hp <= 0) div.classList.add('dead-card');
     enemyCol.appendChild(div);
@@ -271,7 +291,7 @@ async function handleSingleAttack(index) {
 
         const result = battleRound(attacker, enemies[i]);
         appendLog(result.log, result.isCrit ? "orange" : "green");
-        if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
+        if (result.isCrit) appendLog("", "orange");
 
         // Heal on attack
         if (attacker.chosenAbilities && attacker.chosenAbilities.includes('healOnAttack')) {
@@ -331,7 +351,7 @@ async function handleSingleAttack(index) {
   // Apply damage and update state
   const result = battleRound(attacker, enemies[targetIdx]);
   appendLog(result.log, result.isCrit ? "orange" : "green");
-  if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
+  if (result.isCrit) appendLog("", "orange");
 
   // Heal on attack
   if (attacker.chosenAbilities && attacker.chosenAbilities.includes('healOnAttack')) {
@@ -391,7 +411,7 @@ async function handleAllAttack() {
 
             const result = battleRound(p, enemies[j]);
             appendLog(result.log, result.isCrit ? "orange" : "green");
-            if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
+            if (result.isCrit) appendLog("", "orange");
 
             // Heal on attack
             if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
@@ -449,7 +469,7 @@ async function handleAllAttack() {
 
       const result = battleRound(p, enemies[targetIdx]);
       appendLog(result.log, result.isCrit ? "orange" : "green");
-      if (result.isCrit) appendLog("CRITICAL HIT!", "orange");
+      if (result.isCrit) appendLog("", "orange");
 
       // Heal on attack
       if (p.chosenAbilities && p.chosenAbilities.includes('healOnAttack')) {
